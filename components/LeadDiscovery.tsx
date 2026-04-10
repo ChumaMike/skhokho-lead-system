@@ -8,6 +8,7 @@ import DiscoveredLeadCard from '@/components/discovery/DiscoveredLeadCard'
 export default function LeadDiscovery() {
   const [isSearching, setIsSearching] = useState(false)
   const [result, setResult] = useState<DiscoveryResult | null>(null)
+  const [lastSearchParams, setLastSearchParams] = useState<DiscoverySearchParams | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [isPdfLoading, setIsPdfLoading] = useState(false)
@@ -17,6 +18,7 @@ export default function LeadDiscovery() {
     setError(null)
     setResult(null)
     setSelectedIds(new Set())
+    setLastSearchParams(params)
 
     try {
       const response = await fetch('/api/discover-leads', {
@@ -89,12 +91,7 @@ export default function LeadDiscovery() {
         body: JSON.stringify({
           leads: selectedLeads,
           searchedAt: result.searchedAt,
-          searchParams: {
-            sector: selectedLeads[0]?.sector,
-            location: selectedLeads[0]?.location,
-            radius: null,
-            maxResults: result.leads.length,
-          },
+          searchParams: lastSearchParams,
         }),
       })
 
