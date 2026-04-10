@@ -77,7 +77,9 @@ export default function HeatScoreSection({
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold text-gray-900">Heat Score</h2>
+        <h2 className="text-lg font-semibold text-gray-900">
+          <span className="text-green-500 font-bold mr-2">03</span>Heat Score
+        </h2>
         <button
           type="button"
           onClick={handleOverrideToggle}

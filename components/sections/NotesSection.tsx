@@ -8,7 +8,9 @@ interface NotesSectionProps {
 export default function NotesSection({ value, onChange }: NotesSectionProps) {
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-      <h2 className="text-lg font-semibold text-gray-900 mb-4">Notes</h2>
+      <h2 className="text-lg font-semibold text-gray-900 mb-4">
+        <span className="text-green-500 font-bold mr-2">05</span>Notes
+      </h2>
       <textarea
         rows={4}
         className="border border-gray-300 rounded-lg px-3 py-2 w-full focus:outline-none focus:ring-2 focus:ring-green-500 text-sm resize-none"
