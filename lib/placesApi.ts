@@ -30,22 +30,33 @@ export async function searchPlaces(
     throw new Error('GOOGLE_PLACES_API_KEY is not set')
   }
 
+  if (params.maxResults < 1 || params.maxResults > 20) {
+    throw new Error(`maxResults must be between 1 and 20, got ${params.maxResults}`)
+  }
+
   const textQuery = `${getSectorSearchQuery(params.sector)} in ${params.location}`
 
-  const response = await fetch('https://places.googleapis.com/v1/places:searchText', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Goog-Api-Key': apiKey,
-      'X-Goog-FieldMask':
-        'places.id,places.displayName,places.formattedAddress,places.internationalPhoneNumber,places.websiteUri,places.googleMapsUri',
-    },
-    body: JSON.stringify({
-      textQuery,
-      maxResultCount: params.maxResults,
-      languageCode: 'en',
-    }),
-  })
+  // Note: params.radius is reserved for future coordinate-based locationBias.
+  // Currently, location scope is handled via the text query above.
+  let response: Response
+  try {
+    response = await fetch('https://places.googleapis.com/v1/places:searchText', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Goog-Api-Key': apiKey,
+        'X-Goog-FieldMask':
+          'places.id,places.displayName,places.formattedAddress,places.internationalPhoneNumber,places.websiteUri,places.googleMapsUri',
+      },
+      body: JSON.stringify({
+        textQuery,
+        maxResultCount: params.maxResults,
+        languageCode: 'en',
+      }),
+    })
+  } catch (err) {
+    throw new Error(`Google Places API network error: ${err instanceof Error ? err.message : String(err)}`)
+  }
 
   if (!response.ok) {
     const body = await response.text()

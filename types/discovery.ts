@@ -10,7 +10,7 @@ export interface DiscoveredLead {
   source: 'google_maps'
   hasWebsite: boolean
   websiteUrl: string        // empty string if not available
-  googleMapsUrl: string
+  googleMapsUrl: string     // empty string if not available
   hasGoogleProfile: boolean // always true (found via Places API)
   heatScore: number
   heatLevel: HeatLevel
@@ -20,7 +20,7 @@ export interface DiscoveredLead {
 export interface DiscoverySearchParams {
   sector: Sector
   location: string
-  radius: number            // metres (500–50000)
+  radius: number            // metres (500–50000) — reserved for future geo-bias; currently not sent to Places API (location is embedded in the text query)
   maxResults: number        // 1–20
 }
 
