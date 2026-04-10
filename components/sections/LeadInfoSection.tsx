@@ -70,7 +70,7 @@ export default function LeadInfoSection({ data, onChange }: LeadInfoSectionProps
           </label>
           <input
             id="phone"
-            type="text"
+            type="tel"
             className={inputClass}
             value={data.phone ?? ''}
             onChange={(e) => onChange({ phone: e.target.value })}

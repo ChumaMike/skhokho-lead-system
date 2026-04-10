@@ -33,7 +33,7 @@ function buildInitialState(): LeadData {
     heatScoreOverridden: false,
     recommendedProduct: getRecommendedProduct('spaza_food'),
     notes: '',
-    dateGenerated: new Date().toISOString(),
+    dateGenerated: '',
   }
 }
 
@@ -55,13 +55,13 @@ export default function LeadForm({ onSubmit, isLoading }: LeadFormProps) {
 
   // Save agentName to localStorage whenever it changes
   useEffect(() => {
-    if (formData.agentName) {
-      try {
+    try {
+      if (formData.agentName) {
         localStorage.setItem('agentName', formData.agentName)
-      } catch {
-        // ignore
+      } else {
+        localStorage.removeItem('agentName')
       }
-    }
+    } catch { /* ignore quota/security errors */ }
   }, [formData.agentName])
 
   // Auto-update heatScore whenever relevant fields change (unless overridden)
@@ -101,32 +101,21 @@ export default function LeadForm({ onSubmit, isLoading }: LeadFormProps) {
     })
   }, [])
 
-  const handleHeatOverride = useCallback((score: number) => {
-    setFormData((prev) => ({
-      ...prev,
-      heatScore: score,
-      heatScoreOverridden: true,
-    }))
+  const handleHeatOverrideToggle = useCallback((enabled: boolean) => {
+    setFormData((prev) => {
+      const autoScore = calculateHeatScore(prev)
+      return {
+        ...prev,
+        heatScoreOverridden: enabled,
+        // Seed heatScore from the auto score so enabling override never silently no-ops
+        heatScore: autoScore,
+      }
+    })
   }, [])
 
-  // When override is turned off (called with the calculated score), clear override flag
-  // HeatScoreSection calls onOverride with calculated score when toggle is disabled
-  // We detect this by checking if it matches the auto score
-  const handleHeatOverrideWithReset = useCallback(
-    (score: number) => {
-      const autoScore = calculateHeatScore(formData)
-      if (score === autoScore) {
-        setFormData((prev) => ({
-          ...prev,
-          heatScore: autoScore,
-          heatScoreOverridden: false,
-        }))
-      } else {
-        handleHeatOverride(score)
-      }
-    },
-    [formData, handleHeatOverride]
-  )
+  const handleHeatScoreChange = useCallback((score: number) => {
+    setFormData((prev) => ({ ...prev, heatScore: score }))
+  }, [])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -149,7 +138,12 @@ export default function LeadForm({ onSubmit, isLoading }: LeadFormProps) {
 
       {/* Two-column layout for Heat Score + Product on larger screens */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <HeatScoreSection data={formData} onOverride={handleHeatOverrideWithReset} />
+        <HeatScoreSection
+          data={formData}
+          overrideEnabled={formData.heatScoreOverridden}
+          onOverrideToggle={handleHeatOverrideToggle}
+          onScoreChange={handleHeatScoreChange}
+        />
         <ProductSection data={formData} onChange={handleChange} />
       </div>
 

@@ -1,64 +1,35 @@
 'use client'
 
-import { useState } from 'react'
 import type { LeadData } from '@/types/lead'
-import { calculateHeatScore, getHeatLevel } from '@/lib/heatScore'
+import { calculateHeatScore, getHeatLevel, getScoreBreakdown } from '@/lib/heatScore'
 
 interface HeatScoreSectionProps {
   data: Partial<LeadData>
-  onOverride: (score: number) => void
+  overrideEnabled: boolean
+  onOverrideToggle: (enabled: boolean) => void
+  onScoreChange: (score: number) => void
 }
 
 function ScoreBreakdown({ data }: { data: Partial<LeadData> }) {
-  const factors: { label: string; active: boolean; points: number }[] = [
-    {
-      label: 'No website',
-      active: data.hasWebsite === false,
-      points: 3,
-    },
-    {
-      label: 'No Google Business Profile',
-      active: data.hasGoogleProfile === false,
-      points: 2,
-    },
-    {
-      label: 'High-value sector',
-      active:
-        data.sector === 'spaza_food' ||
-        data.sector === 'salon_hair' ||
-        data.sector === 'auto_mechanic' ||
-        data.sector === 'clinic_medical',
-      points: 2,
-    },
-    {
-      label: 'Source is Google Maps or Walk-in',
-      active: data.source === 'google_maps' || data.source === 'walk_in',
-      points: 1,
-    },
-    {
-      label: 'Facebook active (post within 30 days)',
-      active: (() => {
-        if (!data.lastPostDate) return false
-        const d = new Date(data.lastPostDate)
-        if (isNaN(d.getTime())) return false
-        return (Date.now() - d.getTime()) / (1000 * 60 * 60 * 24) <= 30
-      })(),
-      points: 1,
-    },
-    {
-      label: 'Followers > 100',
-      active: data.followerCount != null && data.followerCount > 100,
-      points: 1,
-    },
-  ]
+  const fullData = {
+    hasWebsite: false,
+    hasGoogleProfile: false,
+    lastPostDate: '',
+    followerCount: null,
+    source: 'google_maps',
+    sector: 'spaza_food',
+    ...data,
+  } as LeadData
+
+  const factors = getScoreBreakdown(fullData)
 
   return (
     <ul className="mt-3 space-y-1 text-sm">
       {factors.map((f) => (
-        <li key={f.label} className={`flex items-center gap-2 ${f.active ? 'text-gray-800' : 'text-gray-400'}`}>
-          <span className={`inline-block w-4 h-4 rounded-full flex-shrink-0 ${f.active ? 'bg-green-500' : 'bg-gray-200'}`} />
+        <li key={f.label} className={`flex items-center gap-2 ${f.earned ? 'text-gray-800' : 'text-gray-400'}`}>
+          <span className={`inline-block w-4 h-4 rounded-full flex-shrink-0 ${f.earned ? 'bg-green-500' : 'bg-gray-200'}`} />
           <span>{f.label}</span>
-          {f.active && (
+          {f.earned && (
             <span className="ml-auto font-medium text-green-600">+{f.points}</span>
           )}
         </li>
@@ -67,10 +38,12 @@ function ScoreBreakdown({ data }: { data: Partial<LeadData> }) {
   )
 }
 
-export default function HeatScoreSection({ data, onOverride }: HeatScoreSectionProps) {
-  const [overrideEnabled, setOverrideEnabled] = useState(false)
-  const [overrideValue, setOverrideValue] = useState<number>(5)
-
+export default function HeatScoreSection({
+  data,
+  overrideEnabled,
+  onOverrideToggle,
+  onScoreChange,
+}: HeatScoreSectionProps) {
   // Cast to full LeadData for the score calculation — missing fields default gracefully
   const fullData = {
     hasWebsite: false,
@@ -83,7 +56,7 @@ export default function HeatScoreSection({ data, onOverride }: HeatScoreSectionP
   } as LeadData
 
   const calculatedScore = calculateHeatScore(fullData)
-  const displayScore = overrideEnabled ? overrideValue : calculatedScore
+  const displayScore = overrideEnabled ? (data.heatScore ?? calculatedScore) : calculatedScore
   const level = getHeatLevel(displayScore)
 
   const badgeColors: Record<string, string> = {
@@ -93,19 +66,12 @@ export default function HeatScoreSection({ data, onOverride }: HeatScoreSectionP
   }
 
   function handleOverrideToggle() {
-    const next = !overrideEnabled
-    setOverrideEnabled(next)
-    if (next) {
-      onOverride(overrideValue)
-    } else {
-      onOverride(calculatedScore)
-    }
+    onOverrideToggle(!overrideEnabled)
   }
 
   function handleOverrideChange(val: number) {
     const clamped = Math.min(10, Math.max(1, val))
-    setOverrideValue(clamped)
-    onOverride(clamped)
+    onScoreChange(clamped)
   }
 
   return (
@@ -148,7 +114,7 @@ export default function HeatScoreSection({ data, onOverride }: HeatScoreSectionP
             type="number"
             min={1}
             max={10}
-            value={overrideValue}
+            value={data.heatScore ?? calculatedScore}
             onChange={(e) => handleOverrideChange(Number(e.target.value))}
             className="border border-gray-300 rounded-lg px-3 py-2 w-24 focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
           />

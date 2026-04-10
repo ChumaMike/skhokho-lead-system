@@ -1,5 +1,49 @@
 import type { HeatLevel, LeadData } from '@/types/lead'
 
+export interface ScoreFactor {
+  label: string
+  points: number
+  earned: boolean
+}
+
+/**
+ * Returns the score breakdown — each factor with its label, max points, and
+ * whether it was earned — mirroring the logic in calculateHeatScore exactly.
+ */
+export function getScoreBreakdown(lead: LeadData): ScoreFactor[] {
+  const facebookEarned = (() => {
+    if (!lead.lastPostDate) return false
+    const d = new Date(lead.lastPostDate)
+    if (isNaN(d.getTime())) return false
+    return (Date.now() - d.getTime()) / (1000 * 60 * 60 * 24) <= 30
+  })()
+
+  return [
+    { label: 'No website', points: 3, earned: !lead.hasWebsite },
+    { label: 'No Google Business profile', points: 2, earned: !lead.hasGoogleProfile },
+    {
+      label: 'Facebook active (post within 30 days)',
+      points: 1,
+      earned: facebookEarned,
+    },
+    {
+      label: 'Follower count > 100',
+      points: 1,
+      earned: lead.followerCount != null && lead.followerCount > 100,
+    },
+    {
+      label: 'High-intent source (Google Maps / Walk-in)',
+      points: 1,
+      earned: lead.source === 'google_maps' || lead.source === 'walk_in',
+    },
+    {
+      label: 'High-value sector',
+      points: 2,
+      earned: ['spaza_food', 'salon_hair', 'auto_mechanic', 'clinic_medical'].includes(lead.sector),
+    },
+  ]
+}
+
 /**
  * Calculates a heat score (1–10) based on the lead's profile.
  * Higher scores indicate a more promising lead.
