@@ -44,6 +44,7 @@ const styles = StyleSheet.create({
 
 export function PDFClosingStructure({ lead }: { lead: LeadData }) {
   const product = PRODUCT_DETAILS[lead.recommendedProduct]
+  if (!product) return null
 
   const steps = [
     {
