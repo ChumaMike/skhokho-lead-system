@@ -3,8 +3,10 @@
 import { useState, useEffect, useRef } from 'react'
 import type { LeadData } from '@/types/lead'
 import LeadForm from '@/components/LeadForm'
+import LeadDiscovery from '@/components/LeadDiscovery'
 
 export default function Home() {
+  const [activeTab, setActiveTab] = useState<'enter' | 'discover'>('enter')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
@@ -74,19 +76,50 @@ export default function Home() {
         </div>
       </header>
 
+      {/* Tab bar */}
+      <div className="bg-white border-b border-gray-200">
+        <div className="max-w-3xl mx-auto px-4 flex gap-1 pt-2">
+          <button
+            onClick={() => setActiveTab('enter')}
+            className={`px-5 py-2 text-sm font-medium rounded-t-lg transition-colors ${
+              activeTab === 'enter'
+                ? 'bg-green-600 text-white'
+                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+            }`}
+          >
+            Enter Lead
+          </button>
+          <button
+            onClick={() => setActiveTab('discover')}
+            className={`px-5 py-2 text-sm font-medium rounded-t-lg transition-colors ${
+              activeTab === 'discover'
+                ? 'bg-green-600 text-white'
+                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+            }`}
+          >
+            Discover Leads
+          </button>
+        </div>
+      </div>
+
       {/* Main content */}
       <main className="max-w-3xl mx-auto w-full px-4 py-8 flex-1">
-        {error && (
-          <div className="mb-6 bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 text-sm">
-            <strong>Error:</strong> {error}
-          </div>
+        {activeTab === 'enter' && (
+          <>
+            {error && (
+              <div className="mb-6 bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 text-sm">
+                <strong>Error:</strong> {error}
+              </div>
+            )}
+            {success && (
+              <div className="mb-6 bg-green-50 border border-green-200 text-green-700 rounded-xl px-4 py-3 text-sm">
+                ✓ PDF downloaded successfully! Fill in the next lead below.
+              </div>
+            )}
+            <LeadForm onSubmit={handleSubmit} isLoading={isLoading} />
+          </>
         )}
-        {success && (
-          <div className="mb-6 bg-green-50 border border-green-200 text-green-700 rounded-xl px-4 py-3 text-sm">
-            ✓ PDF downloaded successfully! Fill in the next lead below.
-          </div>
-        )}
-        <LeadForm onSubmit={handleSubmit} isLoading={isLoading} />
+        {activeTab === 'discover' && <LeadDiscovery />}
       </main>
 
       {/* Footer */}
