@@ -60,7 +60,7 @@ Could I get a WhatsApp number to send you more info? Takes 2 minutes to explain.
 // Follow-up Sequence
 // ---------------------------------------------------------------------------
 
-type FollowUpMessage = { day: number; angle: string; message: string }
+export type FollowUpMessage = { day: number; angle: string; message: string }
 
 /** Sector-specific example businesses used in Day 2 follow-up. */
 const SECTOR_EXAMPLES: Record<Sector, string> = {

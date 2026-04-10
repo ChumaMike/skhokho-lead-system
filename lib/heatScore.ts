@@ -4,7 +4,7 @@ import type { HeatLevel, LeadData } from '@/types/lead'
  * Calculates a heat score (1–10) based on the lead's profile.
  * Higher scores indicate a more promising lead.
  */
-export function calculateHeatScore(lead: Partial<LeadData>): number {
+export function calculateHeatScore(lead: LeadData): number {
   let score = 0
 
   // No website: +3
