@@ -1,16 +1,25 @@
 import { Document, Page, View, Text, StyleSheet } from '@react-pdf/renderer'
 import type { DiscoveredLead, DiscoverySearchParams } from '@/types/discovery'
-import { SECTOR_LABELS, PRODUCT_DETAILS } from '@/lib/productMatch'
+import { SECTOR_LABELS, PRODUCT_DETAILS, getAllProductsWithOffer, discoveredLeadToLeadData } from '@/lib/productMatch'
 import { getHeatLevel } from '@/lib/heatScore'
+import { PDFHeader } from '@/pdf/sections/PDFHeader'
+import { PDFLeadProfile } from '@/pdf/sections/PDFLeadProfile'
+import { PDFDigitalPresence } from '@/pdf/sections/PDFDigitalPresence'
+import { PDFHeatScore } from '@/pdf/sections/PDFHeatScore'
+import { PDFAllProducts } from '@/pdf/sections/PDFAllProducts'
+import { PDFContactScripts } from '@/pdf/sections/PDFContactScripts'
+import { PDFFollowUpSequence } from '@/pdf/sections/PDFFollowUpSequence'
+import { PDFClosingStructure } from '@/pdf/sections/PDFClosingStructure'
 
-const styles = StyleSheet.create({
+// ---------------------------------------------------------------------------
+// Cover page styles (preserved from original)
+// ---------------------------------------------------------------------------
+const coverStyles = StyleSheet.create({
   page: {
     fontFamily: 'Helvetica',
     backgroundColor: '#ffffff',
     paddingBottom: 48,
   },
-
-  // Header bar
   topBar: {
     backgroundColor: '#0a0a0a',
     flexDirection: 'row',
@@ -29,8 +38,6 @@ const styles = StyleSheet.create({
     fontFamily: 'Helvetica-Bold',
     color: '#16a34a',
   },
-
-  // Header body
   headerBody: {
     paddingHorizontal: 32,
     paddingTop: 16,
@@ -47,8 +54,6 @@ const styles = StyleSheet.create({
     color: '#6b7280',
     marginBottom: 2,
   },
-
-  // Summary row
   summaryRow: {
     paddingHorizontal: 32,
     marginTop: 12,
@@ -58,14 +63,16 @@ const styles = StyleSheet.create({
     fontFamily: 'Helvetica-Bold',
     color: '#0a0a0a',
   },
-
-  // Lead list
+  summarySubtext: {
+    fontSize: 10,
+    fontFamily: 'Helvetica',
+    color: '#6b7280',
+    marginTop: 4,
+  },
   leadList: {
     paddingHorizontal: 32,
     marginTop: 8,
   },
-
-  // Lead card
   leadCard: {
     flexDirection: 'row',
     borderWidth: 1,
@@ -74,112 +81,46 @@ const styles = StyleSheet.create({
     padding: 10,
     marginBottom: 6,
   },
-
-  // Left column
-  colLeft: {
-    flex: 3,
-    paddingRight: 8,
-  },
+  colLeft: { flex: 3, paddingRight: 8 },
   businessName: {
     fontSize: 11,
     fontFamily: 'Helvetica-Bold',
     color: '#0a0a0a',
     marginBottom: 3,
   },
-  addressText: {
-    fontSize: 9,
-    fontFamily: 'Helvetica',
-    color: '#6b7280',
-    marginBottom: 2,
-  },
-  phoneText: {
-    fontSize: 9,
-    fontFamily: 'Helvetica',
-    color: '#374151',
-  },
-  phoneTextItalic: {
-    fontSize: 9,
-    fontFamily: 'Helvetica',
-    color: '#9ca3af',
-  },
-
-  // Middle column
-  colMiddle: {
-    flex: 2,
-    paddingRight: 8,
-  },
-  websiteYes: {
-    fontSize: 9,
-    fontFamily: 'Helvetica-Bold',
-    color: '#16a34a',
-    marginBottom: 3,
-  },
-  websiteNo: {
-    fontSize: 9,
-    fontFamily: 'Helvetica-Bold',
-    color: '#9ca3af',
-    marginBottom: 3,
-  },
-  mapsText: {
-    fontSize: 8,
-    fontFamily: 'Helvetica',
-    color: '#6b7280',
-  },
-
-  // Right column
-  colRight: {
-    flex: 1,
-    alignItems: 'flex-end',
-  },
-  badgeHot: {
-    backgroundColor: '#dc2626',
-    borderRadius: 3,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    marginBottom: 3,
-  },
-  badgeWarm: {
-    backgroundColor: '#d97706',
-    borderRadius: 3,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    marginBottom: 3,
-  },
-  badgeCold: {
-    backgroundColor: '#2563eb',
-    borderRadius: 3,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    marginBottom: 3,
-  },
-  badgeText: {
-    fontSize: 8,
-    fontFamily: 'Helvetica-Bold',
-    color: '#ffffff',
-  },
-  productText: {
-    fontSize: 8,
-    fontFamily: 'Helvetica',
-    color: '#6b7280',
-    textAlign: 'right',
-  },
-
-  // Footer
-  footer: {
-    position: 'absolute',
-    bottom: 16,
-    left: 0,
-    right: 0,
-    textAlign: 'center',
-  },
-  footerText: {
-    fontSize: 8,
-    fontFamily: 'Helvetica',
-    color: '#9ca3af',
-    textAlign: 'center',
-  },
+  addressText: { fontSize: 9, fontFamily: 'Helvetica', color: '#6b7280', marginBottom: 2 },
+  phoneText: { fontSize: 9, fontFamily: 'Helvetica', color: '#374151' },
+  phoneTextItalic: { fontSize: 9, fontFamily: 'Helvetica', color: '#9ca3af' },
+  colMiddle: { flex: 2, paddingRight: 8 },
+  websiteYes: { fontSize: 9, fontFamily: 'Helvetica-Bold', color: '#16a34a', marginBottom: 3 },
+  websiteNo: { fontSize: 9, fontFamily: 'Helvetica-Bold', color: '#9ca3af', marginBottom: 3 },
+  mapsText: { fontSize: 8, fontFamily: 'Helvetica', color: '#6b7280' },
+  colRight: { flex: 1, alignItems: 'flex-end' },
+  badgeHot: { backgroundColor: '#dc2626', borderRadius: 3, paddingHorizontal: 6, paddingVertical: 2, marginBottom: 3 },
+  badgeWarm: { backgroundColor: '#d97706', borderRadius: 3, paddingHorizontal: 6, paddingVertical: 2, marginBottom: 3 },
+  badgeCold: { backgroundColor: '#2563eb', borderRadius: 3, paddingHorizontal: 6, paddingVertical: 2, marginBottom: 3 },
+  badgeText: { fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#ffffff' },
+  productText: { fontSize: 8, fontFamily: 'Helvetica', color: '#6b7280', textAlign: 'right' },
+  footer: { position: 'absolute', bottom: 16, left: 0, right: 0, textAlign: 'center' },
+  footerText: { fontSize: 8, fontFamily: 'Helvetica', color: '#9ca3af', textAlign: 'center' },
 })
 
+// ---------------------------------------------------------------------------
+// Dossier page styles
+// ---------------------------------------------------------------------------
+const dossierStyles = StyleSheet.create({
+  page: {
+    fontFamily: 'Helvetica',
+    backgroundColor: '#ffffff',
+    paddingBottom: 48,
+  },
+  footer: { position: 'absolute', bottom: 16, left: 0, right: 0, textAlign: 'center' },
+  footerText: { fontSize: 8, fontFamily: 'Helvetica', color: '#9ca3af', textAlign: 'center' },
+})
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
 function formatDate(iso: string): string {
   const d = iso ? new Date(iso) : new Date()
   const valid = !isNaN(d.getTime())
@@ -195,81 +136,81 @@ function truncateMapsUrl(url: string, max = 40): string {
   return url.length > max ? url.slice(0, max) + '...' : url
 }
 
-interface LeadCardProps {
-  lead: DiscoveredLead
-}
-
-function LeadCard({ lead }: LeadCardProps) {
+// ---------------------------------------------------------------------------
+// Cover page lead card
+// ---------------------------------------------------------------------------
+function CoverLeadCard({ lead }: { lead: DiscoveredLead }) {
   const heatLevel = lead.heatLevel ?? getHeatLevel(lead.heatScore)
   const productName = PRODUCT_DETAILS[lead.recommendedProduct]?.name ?? lead.recommendedProduct
 
   const badgeStyle =
-    heatLevel === 'HOT'
-      ? styles.badgeHot
-      : heatLevel === 'WARM'
-      ? styles.badgeWarm
-      : styles.badgeCold
+    heatLevel === 'HOT' ? coverStyles.badgeHot
+    : heatLevel === 'WARM' ? coverStyles.badgeWarm
+    : coverStyles.badgeCold
 
   return (
-    <View style={styles.leadCard}>
-      {/* Left column */}
-      <View style={styles.colLeft}>
-        <Text style={styles.businessName}>{lead.businessName}</Text>
-        <Text style={styles.addressText}>{lead.address}</Text>
+    <View style={coverStyles.leadCard}>
+      <View style={coverStyles.colLeft}>
+        <Text style={coverStyles.businessName}>{lead.businessName}</Text>
+        <Text style={coverStyles.addressText}>{lead.address}</Text>
         {lead.phone ? (
-          <Text style={styles.phoneText}>{lead.phone}</Text>
+          <Text style={coverStyles.phoneText}>{lead.phone}</Text>
         ) : (
-          <Text style={styles.phoneTextItalic}>Phone not listed</Text>
+          <Text style={coverStyles.phoneTextItalic}>Phone not listed</Text>
         )}
       </View>
-
-      {/* Middle column */}
-      <View style={styles.colMiddle}>
+      <View style={coverStyles.colMiddle}>
         {lead.hasWebsite ? (
-          <Text style={styles.websiteYes}>{'\u2713'} Has website</Text>
+          <Text style={coverStyles.websiteYes}>{'\u2713'} Has website</Text>
         ) : (
-          <Text style={styles.websiteNo}>{'\u2717'} No website</Text>
+          <Text style={coverStyles.websiteNo}>{'\u2717'} No website</Text>
         )}
         {lead.googleMapsUrl ? (
-          <Text style={styles.mapsText}>{truncateMapsUrl(lead.googleMapsUrl)}</Text>
+          <Text style={coverStyles.mapsText}>{truncateMapsUrl(lead.googleMapsUrl)}</Text>
         ) : null}
       </View>
-
-      {/* Right column */}
-      <View style={styles.colRight}>
+      <View style={coverStyles.colRight}>
         <View style={badgeStyle}>
-          <Text style={styles.badgeText}>{heatLevel}</Text>
+          <Text style={coverStyles.badgeText}>{heatLevel}</Text>
         </View>
-        <Text style={styles.productText}>{productName}</Text>
+        <Text style={coverStyles.productText}>{productName}</Text>
       </View>
     </View>
   )
 }
 
+// ---------------------------------------------------------------------------
+// Main export
+// ---------------------------------------------------------------------------
 interface DiscoveryReportPDFProps {
   leads: DiscoveredLead[]
   searchedAt: string
   searchParams: DiscoverySearchParams | null
+  agentName?: string
 }
 
-export function DiscoveryReportPDF({ leads, searchedAt, searchParams }: DiscoveryReportPDFProps) {
+export function DiscoveryReportPDF({ leads, searchedAt, searchParams, agentName = '' }: DiscoveryReportPDFProps) {
   const plural = leads.length === 1 ? '' : 's'
 
   return (
-    <Document title="Lead Discovery Report" author="Skhokho Labs">
-      <Page size="A4" style={styles.page}>
-        {/* Header bar */}
-        <View style={styles.topBar}>
-          <Text style={styles.topBarLeft}>SKHOKHO LABS</Text>
-          <Text style={styles.topBarRight}>DISCOVERY REPORT</Text>
+    <Document title="Lead Discovery Dossier" author="Skhokho Labs">
+      {/* ------------------------------------------------------------------ */}
+      {/* Page 1 — Cover / Quick-scan overview                               */}
+      {/* ------------------------------------------------------------------ */}
+      <Page size="A4" style={coverStyles.page}>
+        <View style={coverStyles.topBar}>
+          <Text style={coverStyles.topBarLeft}>SKHOKHO LABS</Text>
+          <Text style={coverStyles.topBarRight}>DISCOVERY DOSSIER</Text>
         </View>
 
-        {/* Header body */}
-        <View style={styles.headerBody}>
-          <Text style={styles.heading}>Lead Discovery Report</Text>
-          <Text style={styles.metaText}>Date: {formatDate(searchedAt)}</Text>
+        <View style={coverStyles.headerBody}>
+          <Text style={coverStyles.heading}>Lead Discovery Dossier</Text>
+          <Text style={coverStyles.metaText}>Date: {formatDate(searchedAt)}</Text>
+          {agentName ? (
+            <Text style={coverStyles.metaText}>Agent: {agentName}</Text>
+          ) : null}
           {searchParams ? (
-            <Text style={styles.metaText}>
+            <Text style={coverStyles.metaText}>
               {'Sector: '}
               {SECTOR_LABELS[searchParams.sector]}
               {' \u00b7 Location: '}
@@ -281,30 +222,59 @@ export function DiscoveryReportPDF({ leads, searchedAt, searchParams }: Discover
           ) : null}
         </View>
 
-        {/* Summary row */}
-        <View style={styles.summaryRow}>
-          <Text style={styles.summaryText}>
+        <View style={coverStyles.summaryRow}>
+          <Text style={coverStyles.summaryText}>
             {'Found '}
             {leads.length}
             {' lead'}
             {plural}
           </Text>
+          <Text style={coverStyles.summarySubtext}>
+            Full sales dossier for each lead follows on the next pages.
+          </Text>
         </View>
 
-        {/* Lead rows */}
-        <View style={styles.leadList}>
+        <View style={coverStyles.leadList}>
           {leads.map((lead) => (
-            <LeadCard key={lead.placeId} lead={lead} />
+            <CoverLeadCard key={lead.placeId} lead={lead} />
           ))}
         </View>
 
-        {/* Footer */}
-        <View style={styles.footer} fixed>
-          <Text style={styles.footerText}>
+        <View style={coverStyles.footer} fixed>
+          <Text style={coverStyles.footerText}>
             Generated by Skhokho Lead System · skhokho.co.za
           </Text>
         </View>
       </Page>
+
+      {/* ------------------------------------------------------------------ */}
+      {/* Pages 2..N — Full dossier per lead                                 */}
+      {/* ------------------------------------------------------------------ */}
+      {leads.map((lead) => {
+        const leadData = discoveredLeadToLeadData(lead, agentName)
+        // Use the search timestamp for a consistent date across all dossier pages
+        leadData.dateGenerated = searchedAt
+        const offers = getAllProductsWithOffer(lead)
+
+        return (
+          <Page key={`dossier-${lead.placeId}`} size="A4" style={dossierStyles.page}>
+            <PDFHeader lead={leadData} />
+            <PDFLeadProfile lead={leadData} />
+            <PDFDigitalPresence lead={leadData} />
+            <PDFHeatScore lead={leadData} />
+            <PDFAllProducts offers={offers} />
+            <PDFContactScripts lead={leadData} />
+            <PDFFollowUpSequence lead={leadData} />
+            <PDFClosingStructure lead={leadData} />
+
+            <View style={dossierStyles.footer} fixed>
+              <Text style={dossierStyles.footerText}>
+                Generated by Skhokho Lead System · skhokho.co.za
+              </Text>
+            </View>
+          </Page>
+        )
+      })}
     </Document>
   )
 }

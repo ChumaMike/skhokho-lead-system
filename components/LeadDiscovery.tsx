@@ -4,6 +4,7 @@ import { useState } from 'react'
 import type { DiscoveryResult, DiscoverySearchParams } from '@/types/discovery'
 import DiscoverySearchForm from '@/components/discovery/DiscoverySearchForm'
 import DiscoveredLeadCard from '@/components/discovery/DiscoveredLeadCard'
+import { getAllProductsWithOffer } from '@/lib/productMatch'
 
 export default function LeadDiscovery() {
   const [isSearching, setIsSearching] = useState(false)
@@ -12,8 +13,10 @@ export default function LeadDiscovery() {
   const [error, setError] = useState<string | null>(null)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [isPdfLoading, setIsPdfLoading] = useState(false)
+  const [agentName, setAgentName] = useState('')
 
-  async function handleSearch(params: DiscoverySearchParams) {
+  async function handleSearch(params: DiscoverySearchParams, name: string) {
+    setAgentName(name)
     setIsSearching(true)
     setError(null)
     setResult(null)
@@ -67,7 +70,11 @@ export default function LeadDiscovery() {
   function handleDownloadJSON() {
     if (!result) return
     const selectedLeads = result.leads.filter((l) => selectedIds.has(l.placeId))
-    const blob = new Blob([JSON.stringify(selectedLeads, null, 2)], { type: 'application/json' })
+    const enriched = selectedLeads.map((lead) => ({
+      ...lead,
+      allProducts: getAllProductsWithOffer(lead),
+    }))
+    const blob = new Blob([JSON.stringify(enriched, null, 2)], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
@@ -92,6 +99,7 @@ export default function LeadDiscovery() {
           leads: selectedLeads,
           searchedAt: result.searchedAt,
           searchParams: lastSearchParams,
+          agentName,
         }),
       })
 

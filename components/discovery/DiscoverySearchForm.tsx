@@ -1,12 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import type { DiscoverySearchParams } from '@/types/discovery'
 import type { Sector } from '@/types/lead'
 import { SECTOR_LABELS } from '@/lib/productMatch'
 
 interface DiscoverySearchFormProps {
-  onSearch: (params: DiscoverySearchParams) => void
+  onSearch: (params: DiscoverySearchParams, agentName: string) => void
   isLoading: boolean
 }
 
@@ -15,10 +15,25 @@ export default function DiscoverySearchForm({ onSearch, isLoading }: DiscoverySe
   const [location, setLocation] = useState('')
   const [radius, setRadius] = useState(5000)
   const [maxResults, setMaxResults] = useState(10)
+  const [agentName, setAgentName] = useState('')
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('agentName')
+      if (saved) setAgentName(saved)
+    } catch { /* ignore */ }
+  }, [])
+
+  useEffect(() => {
+    try {
+      if (agentName) localStorage.setItem('agentName', agentName)
+      else localStorage.removeItem('agentName')
+    } catch { /* ignore */ }
+  }, [agentName])
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    onSearch({ sector, location, radius, maxResults })
+    onSearch({ sector, location, radius, maxResults }, agentName)
   }
 
   const canSearch = location.trim().length > 0 && !isLoading
@@ -27,6 +42,20 @@ export default function DiscoverySearchForm({ onSearch, isLoading }: DiscoverySe
     <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
       <h2 className="text-lg font-bold text-gray-900 mb-5">Find Leads</h2>
       <form onSubmit={handleSubmit}>
+        {/* Agent name */}
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Your Name <span className="text-gray-400 font-normal">(optional — appears on PDF)</span>
+          </label>
+          <input
+            type="text"
+            value={agentName}
+            onChange={(e) => setAgentName(e.target.value)}
+            placeholder="e.g. Thabo Nkosi"
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+          />
+        </div>
+
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 mb-5">
           {/* Sector */}
           <div>

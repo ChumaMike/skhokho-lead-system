@@ -20,9 +20,10 @@ export async function POST(request: NextRequest) {
     const leads = b.leads as DiscoveredLead[]
     const searchedAt = typeof b.searchedAt === 'string' ? b.searchedAt : new Date().toISOString()
     const searchParams = (b.searchParams as DiscoverySearchParams | null) ?? null
+    const agentName = typeof b.agentName === 'string' ? b.agentName.trim() : ''
 
     const buffer = await renderToBuffer(
-      <DiscoveryReportPDF leads={leads} searchedAt={searchedAt} searchParams={searchParams} />
+      <DiscoveryReportPDF leads={leads} searchedAt={searchedAt} searchParams={searchParams} agentName={agentName} />
     )
     const pdfBuffer = buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength) as ArrayBuffer
 
