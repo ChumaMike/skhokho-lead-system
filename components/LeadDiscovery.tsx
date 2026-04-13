@@ -127,6 +127,10 @@ export default function LeadDiscovery() {
   }
 
   async function activateSelected() {
+    if (!agentName.trim()) {
+      alert('Please enter your agent name before activating leads.')
+      return
+    }
     if (!result) return
     const toActivate = result.leads.filter((r) => selectedIds.has(r.placeId))
     if (toActivate.length === 0) return

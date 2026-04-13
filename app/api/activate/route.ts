@@ -60,13 +60,18 @@ export async function POST(request: Request) {
 
       const { data: activationLead, error: leadError } = await sb
         .from('activation_leads')
-        .insert(toDbRow({ ...lead, phone, status: 'sent' }))
+        .insert(toDbRow({ ...lead, phone, status: 'queued' }))
         .select()
         .single()
 
       if (leadError) throw leadError
 
       await sendWhatsApp(phone, messages.day1)
+
+      await sb
+        .from('activation_leads')
+        .update({ status: 'sent', activated_at: new Date().toISOString() })
+        .eq('id', activationLead.id)
 
       await sb.from('activation_messages').insert([
         {

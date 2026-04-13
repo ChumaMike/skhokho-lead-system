@@ -7,7 +7,9 @@ export async function POST(request: Request) {
   // Validate Twilio signature
   const authToken = process.env.TWILIO_AUTH_TOKEN!
   const signature = request.headers.get('x-twilio-signature') ?? ''
-  const url = `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/api/twilio-webhook`
+  const host = request.headers.get('host') ?? ''
+  const proto = request.headers.get('x-forwarded-proto') ?? 'https'
+  const url = `${proto}://${host}/api/twilio-webhook`
 
   const rawBody = await request.text()
   const params = Object.fromEntries(new URLSearchParams(rawBody))

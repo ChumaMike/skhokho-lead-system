@@ -79,7 +79,17 @@ export async function generateMessages(
   })
 
   const text = response.content[0].type === 'text' ? response.content[0].text.trim() : '{}'
-  return JSON.parse(text) as { day1: string; day4: string; day7: string }
+  const parsed = JSON.parse(text) as { day1?: string; day4?: string; day7?: string }
+  if (
+    typeof parsed.day1 !== 'string' || parsed.day1.trim() === '' ||
+    typeof parsed.day4 !== 'string' || parsed.day4.trim() === '' ||
+    typeof parsed.day7 !== 'string' || parsed.day7.trim() === ''
+  ) {
+    throw new Error(
+      `generateMessages: Claude returned an invalid response — expected non-empty "day1", "day4", and "day7" string keys. Got: ${JSON.stringify(parsed)}`
+    )
+  }
+  return parsed as { day1: string; day4: string; day7: string }
 }
 
 /**
