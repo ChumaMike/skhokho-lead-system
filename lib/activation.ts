@@ -1,5 +1,4 @@
 import Anthropic from '@anthropic-ai/sdk'
-import twilio from 'twilio'
 import type { ActivationLeadInput } from '@/types/activation'
 
 /**
@@ -145,15 +144,38 @@ Return ONLY a valid JSON object: { "reply": "...", "outcome": "continue" | "qual
 }
 
 /**
- * Sends a WhatsApp message via Twilio.
- * Returns the Twilio message SID.
+ * Sends a WhatsApp message via Meta Cloud API.
+ * Returns the Meta message ID (wamid).
  */
 export async function sendWhatsApp(toE164: string, body: string): Promise<string> {
-  const client = twilio(process.env.TWILIO_ACCOUNT_SID!, process.env.TWILIO_AUTH_TOKEN!)
-  const message = await client.messages.create({
-    from: process.env.TWILIO_WHATSAPP_FROM!,
-    to: `whatsapp:${toE164}`,
-    body,
-  })
-  return message.sid
+  const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID!
+  const accessToken = process.env.WHATSAPP_ACCESS_TOKEN!
+  // Meta expects E.164 without the leading +
+  const to = toE164.replace(/^\+/, '')
+
+  const res = await fetch(
+    `https://graph.facebook.com/v19.0/${phoneNumberId}/messages`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        messaging_product: 'whatsapp',
+        recipient_type: 'individual',
+        to,
+        type: 'text',
+        text: { preview_url: false, body },
+      }),
+    },
+  )
+
+  if (!res.ok) {
+    const err = await res.json()
+    throw new Error(`Meta WhatsApp API error: ${JSON.stringify(err)}`)
+  }
+
+  const data = await res.json() as { messages?: Array<{ id: string }> }
+  return data.messages?.[0]?.id ?? 'unknown'
 }
