@@ -93,6 +93,58 @@ export async function generateMessages(
 }
 
 /**
+ * Generates an AI reply for an ongoing WhatsApp conversation with a lead.
+ * Returns the reply text and a conversation outcome signal.
+ */
+export async function generateConversationReply(
+  lead: {
+    businessName: string
+    ownerName: string | null
+    sector: string
+    recommendedProduct: string
+    heatLevel: string
+    agentName: string
+  },
+  conversationHistory: Array<{ direction: 'inbound' | 'outbound'; body: string }>,
+): Promise<{ reply: string; outcome: 'continue' | 'qualified' | 'dead' }> {
+  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+
+  const historyText = conversationHistory
+    .map((m) => `[${m.direction === 'outbound' ? lead.agentName : lead.businessName}]: ${m.body}`)
+    .join('\n')
+
+  const prompt = `You are ${lead.agentName}, a friendly sales agent for Skhokho Labs — South Africa's leading AI automation studio for small businesses. Skhokho Labs offers 6 products: AI Receptionist, Smart Booking System, WhatsApp Chatbot, Social Media Automator, Invoice & Quote Assistant, and Lead Nurture Bot.
+
+You are chatting on WhatsApp with the owner of ${lead.businessName} (${lead.sector} sector). They are a ${lead.heatLevel}-heat lead interested in the ${lead.recommendedProduct}. Write in a warm, SA-local WhatsApp tone — conversational, like texting a friend. Use SA greetings (Sawubona, Howzit, Sho) where natural. Keep it under 100 words. Never be pushy.
+
+Conversation so far:
+${historyText}
+
+Now reply as ${lead.agentName}. Also decide the outcome:
+- "qualified" — the lead has agreed to a demo, call, or meeting
+- "dead" — the lead has clearly declined, asked to stop, or gone cold
+- "continue" — conversation is still in progress
+
+Return ONLY a valid JSON object: { "reply": "...", "outcome": "continue" | "qualified" | "dead" }. No markdown, no explanation.`
+
+  const response = await anthropic.messages.create({
+    model: 'claude-haiku-4-5-20251001',
+    max_tokens: 512,
+    system: SYSTEM_PROMPT,
+    messages: [{ role: 'user', content: prompt }],
+  })
+
+  const text = response.content[0].type === 'text' ? response.content[0].text.trim() : '{}'
+  const parsed = JSON.parse(text) as { reply?: string; outcome?: string }
+
+  if (typeof parsed.reply !== 'string' || parsed.reply.trim() === '') {
+    throw new Error(`generateConversationReply: invalid reply in response: ${JSON.stringify(parsed)}`)
+  }
+  const outcome = parsed.outcome === 'qualified' || parsed.outcome === 'dead' ? parsed.outcome : 'continue'
+  return { reply: parsed.reply.trim(), outcome }
+}
+
+/**
  * Sends a WhatsApp message via Twilio.
  * Returns the Twilio message SID.
  */
