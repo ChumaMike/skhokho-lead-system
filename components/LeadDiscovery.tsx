@@ -14,6 +14,8 @@ export default function LeadDiscovery() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [isPdfLoading, setIsPdfLoading] = useState(false)
   const [agentName, setAgentName] = useState('')
+  const [isActivating, setIsActivating] = useState(false)
+  const [activationResult, setActivationResult] = useState<{ activated: number; failed: number } | null>(null)
 
   async function handleSearch(params: DiscoverySearchParams, name: string) {
     setAgentName(name)
@@ -124,6 +126,42 @@ export default function LeadDiscovery() {
     }
   }
 
+  async function activateSelected() {
+    if (!result) return
+    const toActivate = result.leads.filter((r) => selectedIds.has(r.placeId))
+    if (toActivate.length === 0) return
+    setIsActivating(true)
+    setActivationResult(null)
+    try {
+      const res = await fetch('/api/activate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(
+          toActivate.map((lead) => ({
+            businessName: lead.businessName,
+            ownerName: undefined,
+            phone: lead.phone,
+            sector: lead.sector,
+            recommendedProduct: lead.recommendedProduct,
+            heatScore: lead.heatScore,
+            heatLevel: lead.heatLevel,
+            location: lead.location,
+            agentName: agentName,
+            sourceType: 'discovered' as const,
+            hasWebsite: lead.hasWebsite,
+            googleMapsUrl: lead.googleMapsUrl,
+          })),
+        ),
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setActivationResult(data)
+      }
+    } finally {
+      setIsActivating(false)
+    }
+  }
+
   const allSelected =
     result !== null &&
     result.leads.length > 0 &&
@@ -166,46 +204,64 @@ export default function LeadDiscovery() {
           </div>
 
           {selectedIds.size > 0 && (
-            <div className="sticky bottom-4 mt-6 bg-white border border-gray-200 rounded-xl shadow-lg p-4 flex gap-3">
-              <button
-                onClick={handleDownloadJSON}
-                className="flex-1 bg-gray-800 hover:bg-gray-900 text-white font-semibold py-2 rounded-lg transition-colors text-sm"
-              >
-                Download JSON ({selectedIds.size})
-              </button>
-              <button
-                onClick={handleDownloadPDF}
-                disabled={isPdfLoading}
-                className="flex-1 bg-green-600 hover:bg-green-700 text-white font-semibold py-2 rounded-lg transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-              >
-                {isPdfLoading ? (
-                  <>
-                    <svg
-                      className="animate-spin h-4 w-4 text-white"
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                    >
-                      <circle
-                        className="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                      />
-                      <path
-                        className="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-                      />
-                    </svg>
-                    Generating PDF...
-                  </>
-                ) : (
-                  `Download PDF (${selectedIds.size})`
-                )}
-              </button>
+            <div className="sticky bottom-4 mt-6 bg-white border border-gray-200 rounded-xl shadow-lg p-4">
+              <div className="flex gap-3">
+                <button
+                  onClick={handleDownloadJSON}
+                  className="flex-1 bg-gray-800 hover:bg-gray-900 text-white font-semibold py-2 rounded-lg transition-colors text-sm"
+                >
+                  Download JSON ({selectedIds.size})
+                </button>
+                <button
+                  onClick={handleDownloadPDF}
+                  disabled={isPdfLoading}
+                  className="flex-1 bg-green-600 hover:bg-green-700 text-white font-semibold py-2 rounded-lg transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {isPdfLoading ? (
+                    <>
+                      <svg
+                        className="animate-spin h-4 w-4 text-white"
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                      >
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                        />
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                        />
+                      </svg>
+                      Generating PDF...
+                    </>
+                  ) : (
+                    `Download PDF (${selectedIds.size})`
+                  )}
+                </button>
+                <button
+                  onClick={activateSelected}
+                  disabled={isActivating || selectedIds.size === 0}
+                  className="flex items-center gap-2 px-4 py-2 bg-green-700 hover:bg-green-800 disabled:opacity-50 text-white text-sm font-semibold rounded-xl transition-colors"
+                >
+                  {isActivating ? 'Activating…' : `⚡ Activate Selected (${selectedIds.size})`}
+                </button>
+              </div>
+              {activationResult && (
+                <div className={`mt-3 px-4 py-3 rounded-xl text-sm font-medium ${
+                  activationResult.failed > 0 ? 'bg-amber-50 text-amber-800 border border-amber-200' : 'bg-green-50 text-green-800 border border-green-200'
+                }`}>
+                  {activationResult.activated} lead{activationResult.activated !== 1 ? 's' : ''} activated
+                  {activationResult.failed > 0 && ` · ${activationResult.failed} failed (check console)`}
+                  {' — '}switch to the <strong>Activate Leads</strong> tab to track progress.
+                </div>
+              )}
             </div>
           )}
         </div>
