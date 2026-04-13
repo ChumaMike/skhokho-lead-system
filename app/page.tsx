@@ -4,12 +4,15 @@ import { useState, useEffect, useRef } from 'react'
 import type { LeadData } from '@/types/lead'
 import LeadForm from '@/components/LeadForm'
 import LeadDiscovery from '@/components/LeadDiscovery'
+import ActivationPipeline from '@/components/activation/ActivationPipeline'
 
 export default function Home() {
-  const [activeTab, setActiveTab] = useState<'enter' | 'discover'>('enter')
+  const [activeTab, setActiveTab] = useState<'enter' | 'discover' | 'activate'>('enter')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
+  const [lastSubmittedLead, setLastSubmittedLead] = useState<LeadData | null>(null)
+  const [repliedCount, setRepliedCount] = useState(0)
   const successTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Clear timer on unmount to avoid state updates on unmounted component
@@ -19,6 +22,19 @@ export default function Home() {
         clearTimeout(successTimerRef.current)
       }
     }
+  }, [])
+
+  useEffect(() => {
+    const fetchRepliedCount = async () => {
+      const res = await fetch('/api/activation-queue')
+      if (res.ok) {
+        const data: { status: string }[] = await res.json()
+        setRepliedCount(data.filter((l) => l.status === 'replied').length)
+      }
+    }
+    fetchRepliedCount()
+    const interval = setInterval(fetchRepliedCount, 15000)
+    return () => clearInterval(interval)
   }, [])
 
   async function handleSubmit(data: LeadData) {
@@ -52,6 +68,7 @@ export default function Home() {
 
       // Show success banner and auto-dismiss after 4 seconds
       setSuccess(true)
+      setLastSubmittedLead(data)
       successTimerRef.current = setTimeout(() => {
         setSuccess(false)
       }, 4000)
@@ -78,7 +95,7 @@ export default function Home() {
 
       {/* Tab bar */}
       <div className="bg-white border-b border-gray-200">
-        <div className="max-w-3xl mx-auto px-4 flex gap-1 pt-2">
+        <div className="max-w-7xl mx-auto px-4 flex gap-1 pt-2">
           <button
             onClick={() => setActiveTab('enter')}
             className={`px-5 py-2 text-sm font-medium rounded-t-lg transition-colors ${
@@ -99,11 +116,26 @@ export default function Home() {
           >
             Discover Leads
           </button>
+          <button
+            onClick={() => setActiveTab('activate')}
+            className={`px-5 py-2 text-sm font-medium rounded-t-lg transition-colors flex items-center gap-2 ${
+              activeTab === 'activate'
+                ? 'bg-green-600 text-white'
+                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+            }`}
+          >
+            Activate Leads
+            {repliedCount > 0 && (
+              <span className="bg-red-500 text-white text-xs rounded-full px-1.5 py-0.5 leading-none font-bold">
+                {repliedCount}
+              </span>
+            )}
+          </button>
         </div>
       </div>
 
       {/* Main content */}
-      <main className="max-w-3xl mx-auto w-full px-4 py-8 flex-1">
+      <main className={`${activeTab === 'activate' ? 'max-w-7xl' : 'max-w-3xl'} mx-auto w-full px-4 py-8 flex-1`}>
         {activeTab === 'enter' && (
           <>
             {error && (
@@ -111,15 +143,46 @@ export default function Home() {
                 <strong>Error:</strong> {error}
               </div>
             )}
-            {success && (
-              <div className="mb-6 bg-green-50 border border-green-200 text-green-700 rounded-xl px-4 py-3 text-sm">
-                ✓ PDF downloaded successfully! Fill in the next lead below.
+            {success && lastSubmittedLead && (
+              <div className="mb-6 bg-green-50 border border-green-200 text-green-700 rounded-xl px-4 py-3 text-sm flex items-center justify-between gap-4">
+                <span>✓ PDF downloaded successfully!</span>
+                <button
+                  onClick={async () => {
+                    if (!lastSubmittedLead) return
+                    await fetch('/api/activate', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify([{
+                        businessName: lastSubmittedLead.businessName,
+                        ownerName: lastSubmittedLead.ownerName,
+                        phone: lastSubmittedLead.phone,
+                        sector: lastSubmittedLead.sector,
+                        recommendedProduct: lastSubmittedLead.recommendedProduct,
+                        heatScore: lastSubmittedLead.heatScore,
+                        heatLevel: lastSubmittedLead.heatScore >= 9 ? 'HOT' : lastSubmittedLead.heatScore >= 6 ? 'WARM' : 'COLD',
+                        location: lastSubmittedLead.location,
+                        agentName: lastSubmittedLead.agentName,
+                        sourceType: 'entered' as const,
+                        hasWebsite: lastSubmittedLead.hasWebsite,
+                      }]),
+                    })
+                    setActiveTab('activate')
+                  }}
+                  className="bg-green-700 hover:bg-green-800 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap"
+                >
+                  ⚡ Add to Activation Queue
+                </button>
               </div>
             )}
             <LeadForm onSubmit={handleSubmit} isLoading={isLoading} />
           </>
         )}
         {activeTab === 'discover' && <LeadDiscovery />}
+        {activeTab === 'activate' && (
+          <div className="-mx-4 -my-8">
+            <ActivationPipeline />
+          </div>
+        )}
       </main>
 
       {/* Footer */}
