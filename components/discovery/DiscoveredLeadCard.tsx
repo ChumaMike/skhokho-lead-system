@@ -88,7 +88,7 @@ export default function DiscoveredLeadCard({ lead, selected, onToggle }: Discove
             )}
           </div>
 
-          {/* Row 3: Website chip + recommended product */}
+          {/* Row 3: Website chip + channel badges + recommended product */}
           <div className="flex flex-wrap items-center gap-2">
             {lead.hasWebsite ? (
               <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700 font-medium">
@@ -97,6 +97,27 @@ export default function DiscoveredLeadCard({ lead, selected, onToggle }: Discove
             ) : (
               <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 font-medium">
                 No website
+              </span>
+            )}
+            {lead.isWhatsAppCapable && (
+              <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-bold">
+                WA
+              </span>
+            )}
+            {lead.facebookPageUrl && (
+              <a
+                href={lead.facebookPageUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 font-bold hover:bg-blue-200 transition-colors"
+                onClick={(e) => e.stopPropagation()}
+              >
+                FB
+              </a>
+            )}
+            {!lead.isWhatsAppCapable && !lead.facebookPageUrl && lead.phone && (
+              <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 font-medium">
+                Landline
               </span>
             )}
             <span className="text-xs text-gray-500">
@@ -161,8 +182,41 @@ export default function DiscoveredLeadCard({ lead, selected, onToggle }: Discove
                 <span className="text-gray-500">Listed</span>
               </div>
               <div className="flex items-center gap-2 text-xs">
-                <span className="font-semibold text-gray-400">— Facebook</span>
-                <span className="text-gray-400">Not checked</span>
+                {lead.facebookPageUrl ? (
+                  <>
+                    <span className="font-semibold text-blue-700">✓ Facebook Page</span>
+                    <a
+                      href={lead.facebookPageUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:underline truncate max-w-[200px]"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      Message on Facebook
+                    </a>
+                  </>
+                ) : (
+                  <>
+                    <span className="font-semibold text-gray-400">— Facebook Page</span>
+                    <a
+                      href={`https://www.facebook.com/search/pages/?q=${encodeURIComponent(lead.businessName)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-gray-400 hover:text-blue-600 hover:underline"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      Search manually
+                    </a>
+                  </>
+                )}
+              </div>
+              <div className="flex items-center gap-2 text-xs">
+                <span className={`font-semibold ${lead.isWhatsAppCapable ? 'text-emerald-700' : 'text-gray-400'}`}>
+                  {lead.isWhatsAppCapable ? '✓ WhatsApp' : '✗ WhatsApp'}
+                </span>
+                <span className="text-gray-500">
+                  {lead.isWhatsAppCapable ? 'Mobile number — can activate' : 'Landline — cannot WhatsApp'}
+                </span>
               </div>
             </div>
           </div>

@@ -41,9 +41,9 @@ Agent Name: ${lead.agentName}
 Heat Level: ${lead.heatLevel}
 
 Rules:
-- Day 1: warm opener, name the gap (no website, no bookings, etc.), specific product offer, soft CTA
+- Day 1: warm opener, name the gap (no website, no bookings, etc.), specific product offer, mention skhokholabs.xyz, soft CTA
 - Day 4: social proof follow-up, SA business example, ask for a call
-- Day 7: low-pressure final message, leave door open
+- Day 7: low-pressure final message, reference skhokholabs.xyz, leave door open
 - Each message under 150 words
 - Max one emoji per message
 - SA-local greetings (Sawubona, Howzit, Sho) where natural
@@ -57,7 +57,7 @@ function stripCodeFences(text: string): string {
   return text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/i, '').trim()
 }
 
-const SYSTEM_PROMPT = `You are a friendly sales agent for Skhokho Labs, South Africa's leading AI automation studio for small businesses. You write WhatsApp messages that are warm, conversational, and SA-local. You never use corporate jargon. You always write as if texting a friend who runs a business.`
+const SYSTEM_PROMPT = `You are a friendly sales agent for Skhokho Labs (skhokholabs.xyz), South Africa's leading AI automation studio for small businesses. You write WhatsApp messages that are warm, conversational, and SA-local. You never use corporate jargon. You always write as if texting a friend who runs a business.`
 
 /**
  * Calls Claude Haiku to generate a 3-message WhatsApp sequence.

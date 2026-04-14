@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getSupabase } from '@/lib/supabase'
 import { normalizePhone, generateMessages, sendWhatsApp } from '@/lib/activation'
+import { isSAMobile } from '@/lib/placesApi'
 import { getAllProductsWithOffer } from '@/lib/productMatch'
 import { toDbRow } from '@/types/activation'
 import type { ActivationLeadInput } from '@/types/activation'
@@ -26,6 +27,12 @@ export async function POST(request: Request) {
     try {
       const phone = normalizePhone(lead.phone)
 
+      if (!isSAMobile(phone)) {
+        console.warn(`Skipping ${lead.businessName} — ${phone} is a landline, not WhatsApp-capable`)
+        failed++
+        continue
+      }
+
       // Build a minimal DiscoveredLead shape for getAllProductsWithOffer
       const pseudoLead: DiscoveredLead = {
         placeId: '',
@@ -39,6 +46,8 @@ export async function POST(request: Request) {
         websiteUrl: '',
         googleMapsUrl: lead.googleMapsUrl ?? '',
         hasGoogleProfile: true,
+        isWhatsAppCapable: true,
+        facebookPageUrl: '',
         heatScore: lead.heatScore,
         heatLevel: lead.heatLevel,
         recommendedProduct: lead.recommendedProduct,

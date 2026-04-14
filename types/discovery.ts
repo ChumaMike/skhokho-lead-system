@@ -15,6 +15,8 @@ export interface DiscoveredLead {
   heatScore: number
   heatLevel: HeatLevel
   recommendedProduct: Product
+  isWhatsAppCapable: boolean   // true if phone is SA mobile (06x/07x/08x)
+  facebookPageUrl: string      // empty string if not found
 }
 
 export interface DiscoverySearchParams {
