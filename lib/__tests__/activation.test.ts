@@ -39,22 +39,22 @@ describe('buildMessagePrompt', () => {
   }
 
   it('includes business name in prompt', () => {
-    const prompt = buildMessagePrompt(lead, 'Take bookings online', 'Relies on appointments')
+    const prompt = buildMessagePrompt(lead, 'Take bookings online', 'Relies on appointments', ['ai_receptionist', 'content_dashboard'])
     expect(prompt).toContain("Mama T's Salon")
   })
 
   it('includes agent name in prompt', () => {
-    const prompt = buildMessagePrompt(lead, 'Take bookings online', 'Relies on appointments')
+    const prompt = buildMessagePrompt(lead, 'Take bookings online', 'Relies on appointments', ['ai_receptionist', 'content_dashboard'])
     expect(prompt).toContain('Thabo')
   })
 
   it('includes product pitch in prompt', () => {
-    const prompt = buildMessagePrompt(lead, 'Take bookings online', 'Relies on appointments')
+    const prompt = buildMessagePrompt(lead, 'Take bookings online', 'Relies on appointments', ['ai_receptionist', 'content_dashboard'])
     expect(prompt).toContain('Take bookings online')
   })
 
   it('mentions no website when hasWebsite is false', () => {
-    const prompt = buildMessagePrompt(lead, 'Take bookings online', 'Relies on appointments')
+    const prompt = buildMessagePrompt(lead, 'Take bookings online', 'Relies on appointments', ['ai_receptionist', 'content_dashboard'])
     expect(prompt).toContain('false')
   })
 })

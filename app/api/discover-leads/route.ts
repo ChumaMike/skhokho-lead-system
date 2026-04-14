@@ -27,8 +27,8 @@ export async function POST(request: NextRequest) {
   // radius: default to 5000 if not provided, clamp to 500–50000
   const radius = typeof b.radius === 'number' ? Math.min(50000, Math.max(500, b.radius)) : 5000
 
-  // maxResults: default to 10 if not provided, clamp to 1–20
-  const maxResults = typeof b.maxResults === 'number' ? Math.min(20, Math.max(1, b.maxResults)) : 10
+  // maxResults: default to 20 if not provided, clamp to 1–500
+  const maxResults = typeof b.maxResults === 'number' ? Math.min(500, Math.max(1, b.maxResults)) : 20
 
   const params: DiscoverySearchParams = {
     sector: b.sector as DiscoverySearchParams['sector'],

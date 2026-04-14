@@ -55,24 +55,28 @@ async function findFacebookPage(businessName: string): Promise<string | null> {
   }
 }
 
+interface PlacesApiResponseWithToken extends PlacesApiResponse {
+  nextPageToken?: string
+}
+
+const PLACES_API_PAGE_SIZE = 20 // max per Google Places API call
+
 /**
- * Searches Google Places API v1 Text Search for businesses matching the
- * given discovery params and returns a list of DiscoveredLead objects
- * sorted by heatScore descending.
+ * Fetches one page from Google Places Text Search API.
+ * Returns places and an optional nextPageToken for pagination.
  */
-export async function searchPlaces(
-  params: DiscoverySearchParams,
-): Promise<DiscoveredLead[]> {
-  const apiKey = process.env.GOOGLE_PLACES_API_KEY
-  if (!apiKey) {
-    throw new Error('GOOGLE_PLACES_API_KEY is not set')
+async function fetchPlacesPage(
+  apiKey: string,
+  textQuery: string,
+  pageSize: number,
+  pageToken?: string,
+): Promise<{ places: PlacesApiPlace[]; nextPageToken?: string }> {
+  const body: Record<string, unknown> = {
+    textQuery,
+    maxResultCount: pageSize,
+    languageCode: 'en',
   }
-
-  if (params.maxResults < 1 || params.maxResults > 20) {
-    throw new Error(`maxResults must be between 1 and 20, got ${params.maxResults}`)
-  }
-
-  const textQuery = `${getSectorSearchQuery(params.sector)} in ${params.location}`
+  if (pageToken) body.pageToken = pageToken
 
   let response: Response
   try {
@@ -82,27 +86,60 @@ export async function searchPlaces(
         'Content-Type': 'application/json',
         'X-Goog-Api-Key': apiKey,
         'X-Goog-FieldMask':
-          'places.id,places.displayName,places.formattedAddress,places.internationalPhoneNumber,places.websiteUri,places.googleMapsUri',
+          'places.id,places.displayName,places.formattedAddress,places.internationalPhoneNumber,places.websiteUri,places.googleMapsUri,nextPageToken',
       },
-      body: JSON.stringify({
-        textQuery,
-        maxResultCount: params.maxResults,
-        languageCode: 'en',
-      }),
+      body: JSON.stringify(body),
     })
   } catch (err) {
     throw new Error(`Google Places API network error: ${err instanceof Error ? err.message : String(err)}`)
   }
 
   if (!response.ok) {
-    const body = await response.text()
-    throw new Error(
-      `Google Places API request failed (${response.status}): ${body}`,
-    )
+    const text = await response.text()
+    throw new Error(`Google Places API request failed (${response.status}): ${text}`)
   }
 
-  const data: PlacesApiResponse = await response.json()
-  const places = data.places ?? []
+  const data: PlacesApiResponseWithToken = await response.json()
+  return { places: data.places ?? [], nextPageToken: data.nextPageToken }
+}
+
+/**
+ * Searches Google Places API v1 Text Search for businesses matching the
+ * given discovery params and returns a list of DiscoveredLead objects
+ * sorted by heatScore descending.
+ *
+ * Supports up to 500 results via automatic pagination (20 per page).
+ */
+export async function searchPlaces(
+  params: DiscoverySearchParams,
+): Promise<DiscoveredLead[]> {
+  const apiKey = process.env.GOOGLE_PLACES_API_KEY
+  if (!apiKey) {
+    throw new Error('GOOGLE_PLACES_API_KEY is not set')
+  }
+
+  if (params.maxResults < 1 || params.maxResults > 500) {
+    throw new Error(`maxResults must be between 1 and 500, got ${params.maxResults}`)
+  }
+
+  const textQuery = `${getSectorSearchQuery(params.sector)} in ${params.location}`
+
+  // Paginate until we have enough results or there are no more pages
+  const allPlaces: PlacesApiPlace[] = []
+  let pageToken: string | undefined = undefined
+
+  while (allPlaces.length < params.maxResults) {
+    const remaining = params.maxResults - allPlaces.length
+    const pageSize = Math.min(remaining, PLACES_API_PAGE_SIZE)
+    const { places, nextPageToken } = await fetchPlacesPage(apiKey, textQuery, pageSize, pageToken)
+
+    allPlaces.push(...places)
+
+    if (!nextPageToken || places.length < pageSize) break
+    pageToken = nextPageToken
+  }
+
+  const places = allPlaces.slice(0, params.maxResults)
 
   // Run Facebook page lookups in parallel with lead construction
   const facebookPages = await Promise.all(

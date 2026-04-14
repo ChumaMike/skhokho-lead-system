@@ -44,6 +44,24 @@ export const PRODUCT_DETAILS: Record<
 }
 
 /**
+ * Returns 2 supporting products to mention alongside the recommended one.
+ * These are complementary, not competing — they show the breadth of the suite.
+ */
+export function getSupportingProducts(sector: Sector, recommended: Product): [Product, Product] {
+  const map: Record<Sector, [Product, Product]> = {
+    salon_hair:       ['ai_receptionist', 'content_dashboard'],
+    clinic_medical:   ['ai_receptionist', 'lead_activation'],
+    auto_mechanic:    ['ai_receptionist', 'lead_activation'],
+    spaza_food:       ['starter_website', 'content_dashboard'],
+    real_estate:      ['lead_activation', 'content_dashboard'],
+    legal_consulting: ['ai_receptionist', 'speed_to_lead'],
+    other:            ['pro_website_bookings', 'content_dashboard'],
+  }
+  // Filter out the recommended product in case of overlap
+  return map[sector].filter((p) => p !== recommended).slice(0, 2) as [Product, Product]
+}
+
+/**
  * Returns the primary recommended product for a given sector.
  */
 export function getRecommendedProduct(sector: Sector): Product {

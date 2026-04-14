@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { getSupabase } from '@/lib/supabase'
 import { normalizePhone, generateMessages, sendWhatsApp } from '@/lib/activation'
 import { isSAMobile } from '@/lib/placesApi'
-import { getAllProductsWithOffer } from '@/lib/productMatch'
+import { getAllProductsWithOffer, getSupportingProducts } from '@/lib/productMatch'
 import { toDbRow } from '@/types/activation'
 import type { ActivationLeadInput } from '@/types/activation'
 import type { DiscoveredLead } from '@/types/discovery'
@@ -58,7 +58,8 @@ export async function POST(request: Request) {
       const pitch = offer?.pitch ?? ''
       const whyItFits = offer?.whyItFits ?? ''
 
-      const messages = await generateMessages({ ...lead, phone }, pitch, whyItFits)
+      const supportingProducts = getSupportingProducts(lead.sector, lead.recommendedProduct)
+      const messages = await generateMessages({ ...lead, phone }, pitch, whyItFits, supportingProducts)
 
       const now = new Date()
       const day4Date = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000)
@@ -118,8 +119,7 @@ export async function POST(request: Request) {
       activated++
     } catch (err) {
       console.error('Failed to activate lead:', (lead as ActivationLeadInput).businessName, err)
-      const message = err instanceof Error ? err.message : JSON.stringify(err)
-      return NextResponse.json({ activated, failed, error: message }, { status: 500 })
+      failed++
     }
   }
 

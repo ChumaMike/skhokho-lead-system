@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk'
 import type { ActivationLeadInput } from '@/types/activation'
+import { PRODUCT_DETAILS } from '@/lib/productMatch'
 
 /**
  * Normalizes a South African phone number to E.164 format (+27XXXXXXXXX).
@@ -26,7 +27,19 @@ export function buildMessagePrompt(
   lead: ActivationLeadInput,
   productPitch: string,
   whyItFits: string,
+  supportingProducts: [string, string],
 ): string {
+  const recProduct = PRODUCT_DETAILS[lead.recommendedProduct as keyof typeof PRODUCT_DETAILS]
+  const recPrice = recProduct
+    ? `${recProduct.setupFee} setup + ${recProduct.monthly}`
+    : ''
+
+  const [sup1Key, sup2Key] = supportingProducts
+  const sup1 = PRODUCT_DETAILS[sup1Key as keyof typeof PRODUCT_DETAILS]
+  const sup2 = PRODUCT_DETAILS[sup2Key as keyof typeof PRODUCT_DETAILS]
+  const sup1Line = sup1 ? `- ${sup1.name} (${sup1.setupFee} setup) — ${sup1.pitch}` : ''
+  const sup2Line = sup2 ? `- ${sup2.name} (${sup2.setupFee} setup) — ${sup2.pitch}` : ''
+
   return `Write a 3-message WhatsApp outreach sequence for this lead:
 
 Business: ${lead.businessName}
@@ -34,16 +47,23 @@ Owner: ${lead.ownerName ?? 'Business Owner'}
 Sector: ${lead.sector}
 Location: ${lead.location}
 Has Website: ${lead.hasWebsite ?? false}
-Recommended Product: ${lead.recommendedProduct}
-Product Pitch: ${productPitch}
-Why It Fits: ${whyItFits}
 Agent Name: ${lead.agentName}
 Heat Level: ${lead.heatLevel}
 
+RECOMMENDED PRODUCT (lead with this — be specific about why it fits this business):
+  Name: ${recProduct?.name ?? lead.recommendedProduct}
+  Price: ${recPrice}
+  Pitch: ${productPitch}
+  Why it fits this business: ${whyItFits}
+
+ALSO OFFER (mention briefly to show we have a full AI suite — do NOT overshadow the main offer):
+${sup1Line}
+${sup2Line}
+
 Rules:
-- Day 1: warm opener, name the gap (no website, no bookings, etc.), specific product offer, mention skhokholabs.xyz, soft CTA
-- Day 4: social proof follow-up, SA business example, ask for a call
-- Day 7: low-pressure final message, reference skhokholabs.xyz, leave door open
+- Day 1: warm opener, name the gap (no website, no bookings, etc.), lead with the recommended product and why it's right for them, end with a single sentence showing we also have ${sup1?.name ?? ''} and ${sup2?.name ?? ''} if they ever need it, mention skhokholabs.xyz, soft CTA
+- Day 4: social proof follow-up on the recommended product, SA business example, ask for a call
+- Day 7: low-pressure final message, briefly mention the full suite at skhokholabs.xyz, leave door open
 - Each message under 150 words
 - Max one emoji per message
 - SA-local greetings (Sawubona, Howzit, Sho) where natural
@@ -67,6 +87,7 @@ export async function generateMessages(
   lead: ActivationLeadInput,
   productPitch: string,
   whyItFits: string,
+  supportingProducts: [string, string] = ['starter_website', 'content_dashboard'],
 ): Promise<{ day1: string; day4: string; day7: string }> {
   const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
@@ -77,7 +98,7 @@ export async function generateMessages(
     messages: [
       {
         role: 'user',
-        content: buildMessagePrompt(lead, productPitch, whyItFits),
+        content: buildMessagePrompt(lead, productPitch, whyItFits, supportingProducts),
       },
     ],
   })
@@ -117,7 +138,9 @@ export async function generateConversationReply(
     .map((m) => `[${m.direction === 'outbound' ? lead.agentName : lead.businessName}]: ${m.body}`)
     .join('\n')
 
-  const prompt = `You are ${lead.agentName}, a friendly sales agent for Skhokho Labs — South Africa's leading AI automation studio for small businesses. Skhokho Labs offers 6 products: AI Receptionist, Smart Booking System, WhatsApp Chatbot, Social Media Automator, Invoice & Quote Assistant, and Lead Nurture Bot.
+  const allProductNames = Object.values(PRODUCT_DETAILS).map((p) => p.name).join(', ')
+
+  const prompt = `You are ${lead.agentName}, a friendly sales agent for Skhokho Labs — South Africa's leading AI automation studio for small businesses. Skhokho Labs offers 6 products: ${allProductNames}.
 
 You are chatting on WhatsApp with the owner of ${lead.businessName} (${lead.sector} sector). They are a ${lead.heatLevel}-heat lead interested in the ${lead.recommendedProduct}. Write in a warm, SA-local WhatsApp tone — conversational, like texting a friend. Use SA greetings (Sawubona, Howzit, Sho) where natural. Keep it under 100 words. Never be pushy.
 

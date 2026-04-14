@@ -23,7 +23,7 @@ export interface DiscoverySearchParams {
   sector: Sector
   location: string
   radius: number            // metres (500–50000) — reserved for future geo-bias; currently not sent to Places API (location is embedded in the text query)
-  maxResults: number        // 1–20
+  maxResults: number        // 1–500
 }
 
 export interface DiscoveryResult {

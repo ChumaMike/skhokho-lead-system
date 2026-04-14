@@ -14,7 +14,7 @@ export default function DiscoverySearchForm({ onSearch, isLoading }: DiscoverySe
   const [sector, setSector] = useState<Sector>('spaza_food')
   const [location, setLocation] = useState('')
   const [radius, setRadius] = useState(5000)
-  const [maxResults, setMaxResults] = useState(10)
+  const [maxResults, setMaxResults] = useState(20)
   const [agentName, setAgentName] = useState('')
 
   useEffect(() => {
@@ -120,6 +120,11 @@ export default function DiscoverySearchForm({ onSearch, isLoading }: DiscoverySe
               <option value={5}>5</option>
               <option value={10}>10</option>
               <option value={20}>20</option>
+              <option value={40}>40</option>
+              <option value={60}>60</option>
+              <option value={100}>100</option>
+              <option value={200}>200</option>
+              <option value={500}>500</option>
             </select>
           </div>
         </div>
