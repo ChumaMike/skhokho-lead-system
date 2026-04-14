@@ -52,6 +52,11 @@ Rules:
 Return ONLY a valid JSON object with keys "day1", "day4", "day7". No markdown, no explanation.`
 }
 
+/** Strips markdown code fences from Claude output before JSON.parse */
+function stripCodeFences(text: string): string {
+  return text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/i, '').trim()
+}
+
 const SYSTEM_PROMPT = `You are a friendly sales agent for Skhokho Labs, South Africa's leading AI automation studio for small businesses. You write WhatsApp messages that are warm, conversational, and SA-local. You never use corporate jargon. You always write as if texting a friend who runs a business.`
 
 /**
@@ -77,8 +82,8 @@ export async function generateMessages(
     ],
   })
 
-  const text = response.content[0].type === 'text' ? response.content[0].text.trim() : '{}'
-  const parsed = JSON.parse(text) as { day1?: string; day4?: string; day7?: string }
+  const raw = response.content[0].type === 'text' ? response.content[0].text.trim() : '{}'
+  const parsed = JSON.parse(stripCodeFences(raw)) as { day1?: string; day4?: string; day7?: string }
   if (
     typeof parsed.day1 !== 'string' || parsed.day1.trim() === '' ||
     typeof parsed.day4 !== 'string' || parsed.day4.trim() === '' ||
@@ -133,8 +138,8 @@ Return ONLY a valid JSON object: { "reply": "...", "outcome": "continue" | "qual
     messages: [{ role: 'user', content: prompt }],
   })
 
-  const text = response.content[0].type === 'text' ? response.content[0].text.trim() : '{}'
-  const parsed = JSON.parse(text) as { reply?: string; outcome?: string }
+  const raw = response.content[0].type === 'text' ? response.content[0].text.trim() : '{}'
+  const parsed = JSON.parse(stripCodeFences(raw)) as { reply?: string; outcome?: string }
 
   if (typeof parsed.reply !== 'string' || parsed.reply.trim() === '') {
     throw new Error(`generateConversationReply: invalid reply in response: ${JSON.stringify(parsed)}`)

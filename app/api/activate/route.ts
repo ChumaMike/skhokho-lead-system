@@ -109,7 +109,8 @@ export async function POST(request: Request) {
       activated++
     } catch (err) {
       console.error('Failed to activate lead:', (lead as ActivationLeadInput).businessName, err)
-      failed++
+      const message = err instanceof Error ? err.message : JSON.stringify(err)
+      return NextResponse.json({ activated, failed, error: message }, { status: 500 })
     }
   }
 
