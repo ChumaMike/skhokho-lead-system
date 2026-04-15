@@ -52,10 +52,10 @@ export async function POST(request: Request) {
     if (!phone) continue
 
     try {
-      await sendWhatsApp(phone, msg.body)
+      const wamid = await sendWhatsApp(phone, msg.body)
       await (supabase as any)
         .from('activation_messages')
-        .update({ status: 'sent', sent_at: new Date().toISOString() })
+        .update({ status: 'sent', sent_at: new Date().toISOString(), meta_message_id: wamid })
         .eq('id', msg.id)
       sent++
     } catch (err) {

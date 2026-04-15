@@ -16,7 +16,7 @@ export async function GET(request: Request) {
   return new Response('Forbidden', { status: 403 })
 }
 
-// POST — incoming WhatsApp messages from Meta
+// POST — incoming WhatsApp messages + delivery/read status from Meta
 export async function POST(request: Request) {
   const payload = await request.json() as Record<string, unknown>
 
@@ -24,6 +24,22 @@ export async function POST(request: Request) {
   const entry = (payload.entry as Array<Record<string, unknown>>)?.[0]
   const change = (entry?.changes as Array<Record<string, unknown>>)?.[0]
   const value = change?.value as Record<string, unknown> | undefined
+
+  // ── Handle delivery/read status updates ──────────────────────────────────
+  const statuses = value?.statuses as Array<Record<string, unknown>> | undefined
+  if (statuses?.length) {
+    const supabase = getSupabase()
+    for (const s of statuses) {
+      const wamid = s.id as string
+      const status = s.status as string  // 'sent' | 'delivered' | 'read' | 'failed'
+      if (!wamid || !['delivered', 'read', 'failed'].includes(status)) continue
+      await (supabase as any)
+        .from('activation_messages')
+        .update({ status })
+        .eq('meta_message_id', wamid)
+    }
+    return NextResponse.json({ received: true })
+  }
 
   const messages = value?.messages as Array<Record<string, unknown>> | undefined
   const message = messages?.[0]
@@ -116,7 +132,7 @@ export async function POST(request: Request) {
         .update({ status: 'dead' })
         .eq('id', lead.id)
     } else {
-      await sendWhatsApp(lead.phone, reply)
+      const replyWamid = await sendWhatsApp(lead.phone, reply)
 
       await (supabase as any).from('activation_messages').insert({
         lead_id: lead.id,
@@ -127,6 +143,7 @@ export async function POST(request: Request) {
         channel: 'whatsapp',
         sent_at: new Date().toISOString(),
         scheduled_for: null,
+        meta_message_id: replyWamid,
       })
 
       if (lead.status === 'sent') {

@@ -1,0 +1,42 @@
+<h2>How should we architect the Activation System?</h2>
+<p class="subtitle">Three approaches — pick the one that feels right</p>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>New Tab in the Existing App <span style="color:#22c55e;font-size:0.8em;margin-left:8px">★ Recommended</span></h3>
+      <p>Add a 3rd "Activate Leads" tab right next to Enter Lead and Discover Leads. Connects to Supabase to persist the activation queue + message history. Twilio sends the WhatsApp messages. Claude generates the message content per lead.</p>
+      <div class="pros-cons" style="margin-top:0.75rem">
+        <div class="pros"><h4>Pros</h4><ul><li>One app, one place for agents</li><li>Reuses all existing lead data, heat scores, product logic</li><li>Consistent UI — no context switching</li><li>Fastest to build on existing patterns</li></ul></div>
+        <div class="cons"><h4>Cons</h4><ul><li>Adds Supabase dependency to a currently stateless app</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Separate Activation App</h3>
+      <p>Build a dedicated activation app as its own Next.js project. Shares the same Supabase and Twilio credentials. The lead system exports leads as JSON; the activation app imports them.</p>
+      <div class="pros-cons" style="margin-top:0.75rem">
+        <div class="pros"><h4>Pros</h4><ul><li>Clean separation of concerns</li><li>Can be deployed independently</li></ul></div>
+        <div class="cons"><h4>Cons</h4><ul><li>Agents must switch between two apps</li><li>Lead data has to be exported/imported manually</li><li>Duplicates a lot of UI work</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>n8n Automation Backend</h3>
+      <p>Use the existing n8n instance (already deployed on Railway) as the automation backbone. The lead app pushes leads to n8n via webhooks; n8n handles the message sequencing, Twilio calls, and tracking. App UI just shows the queue status.</p>
+      <div class="pros-cons" style="margin-top:0.75rem">
+        <div class="pros"><h4>Pros</h4><ul><li>Very powerful automation flows</li><li>n8n already deployed and running</li><li>Easy to modify sequences without code</li></ul></div>
+        <div class="cons"><h4>Cons</h4><ul><li>Two systems to maintain</li><li>Less real-time UI feedback</li><li>n8n has its own complexity and failure modes</li></ul></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<p class="subtitle" style="margin-top:1.5rem">Click your preference, then confirm in the terminal.</p>

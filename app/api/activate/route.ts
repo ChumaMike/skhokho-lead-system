@@ -76,7 +76,7 @@ export async function POST(request: Request) {
 
       if (leadError) throw leadError
 
-      await sendWhatsApp(phone, messages.day1)
+      const wamid = await sendWhatsApp(phone, messages.day1)
 
       await sb
         .from('activation_leads')
@@ -93,6 +93,7 @@ export async function POST(request: Request) {
           channel: 'whatsapp',
           sent_at: now.toISOString(),
           scheduled_for: null,
+          meta_message_id: wamid,
         },
         {
           lead_id: activationLead.id,

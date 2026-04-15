@@ -2,7 +2,7 @@ import type { Sector, Product, HeatLevel } from './lead'
 
 export type ActivationStatus = 'queued' | 'sent' | 'replied' | 'booked' | 'dead'
 export type MessageDirection = 'outbound' | 'inbound'
-export type MessageStatus = 'scheduled' | 'sent' | 'delivered' | 'failed' | 'cancelled'
+export type MessageStatus = 'scheduled' | 'sent' | 'delivered' | 'read' | 'failed' | 'cancelled'
 
 export interface ActivationLead {
   id: string
@@ -37,6 +37,7 @@ export interface ActivationMessage {
   channel: 'whatsapp'
   sentAt: string | null
   scheduledFor: string | null
+  metaMessageId: string | null
 }
 
 export interface ActivationLeadInput {
@@ -161,6 +162,7 @@ export function msgFromDbRow(row: Record<string, unknown>): ActivationMessage {
     channel: 'whatsapp',
     sentAt: nullable(str, row.sent_at, 'sent_at'),
     scheduledFor: nullable(str, row.scheduled_for, 'scheduled_for'),
+    metaMessageId: nullable(str, row.meta_message_id, 'meta_message_id'),
   }
 }
 
