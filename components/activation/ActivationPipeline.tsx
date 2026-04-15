@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback } from 'react'
 import ActivationLeadCard from './ActivationLeadCard'
 import ActivationToolbar from './ActivationToolbar'
+import ConversationModal from './ConversationModal'
+import AddLeadModal from './AddLeadModal'
 import type { ActivationLead } from '@/types/activation'
 import type { Sector } from '@/types/lead'
 
@@ -18,6 +20,8 @@ export default function ActivationPipeline() {
   const [sectorFilter, setSectorFilter] = useState<Sector | 'all'>('all')
   const [isActivating, setIsActivating] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
+  const [threadLeadId, setThreadLeadId] = useState<string | null>(null)
+  const [showAddLead, setShowAddLead] = useState(false)
 
   const fetchLeads = useCallback(async () => {
     const res = await fetch('/api/activation-queue')
@@ -76,6 +80,8 @@ export default function ActivationPipeline() {
             sourceType: l.sourceType,
             hasWebsite: l.hasWebsite,
             googleMapsUrl: l.googleMapsUrl,
+            facebookPageUrl: l.facebookPageUrl,
+            instagramUrl: l.instagramUrl,
           })),
         ),
       })
@@ -85,6 +91,7 @@ export default function ActivationPipeline() {
     }
   }
 
+  const threadLead = threadLeadId ? leads.find((l) => l.id === threadLeadId) ?? null : null
   const repliedCount = leads.filter((l) => l.status === 'replied').length
   const queuedCount = leads.filter((l) => l.status === 'queued').length
 
@@ -97,6 +104,7 @@ export default function ActivationPipeline() {
         sectorFilter={sectorFilter}
         onSectorFilterChange={setSectorFilter}
         onActivateAllQueued={handleActivateAllQueued}
+        onAddLead={() => setShowAddLead(true)}
         isActivating={isActivating}
       />
 
@@ -123,6 +131,7 @@ export default function ActivationPipeline() {
                     <ActivationLeadCard
                       key={lead.id}
                       lead={lead}
+                      onViewThread={(id) => setThreadLeadId(id)}
                       onTakeOver={handleTakeOver}
                       onMarkBooked={(id) => updateLeadStatus(id, 'booked')}
                       onMarkDead={(id) => updateLeadStatus(id, 'dead')}
@@ -136,6 +145,23 @@ export default function ActivationPipeline() {
             )
           })}
         </div>
+      )}
+
+      {threadLead && (
+        <ConversationModal
+          lead={threadLead}
+          onClose={() => setThreadLeadId(null)}
+        />
+      )}
+
+      {showAddLead && (
+        <AddLeadModal
+          onClose={() => setShowAddLead(false)}
+          onAdded={() => {
+            setShowAddLead(false)
+            fetchLeads()
+          }}
+        />
       )}
     </div>
   )

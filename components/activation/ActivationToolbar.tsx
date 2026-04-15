@@ -10,6 +10,7 @@ interface Props {
   sectorFilter: Sector | 'all'
   onSectorFilterChange: (sector: Sector | 'all') => void
   onActivateAllQueued: () => void
+  onAddLead: () => void
   isActivating: boolean
 }
 
@@ -20,6 +21,7 @@ export default function ActivationToolbar({
   sectorFilter,
   onSectorFilterChange,
   onActivateAllQueued,
+  onAddLead,
   isActivating,
 }: Props) {
   return (
@@ -46,6 +48,13 @@ export default function ActivationToolbar({
             </option>
           ))}
         </select>
+
+        <button
+          onClick={onAddLead}
+          className="bg-white hover:bg-gray-50 border border-gray-300 text-gray-700 text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
+        >
+          + Add Lead
+        </button>
 
         <button
           onClick={onActivateAllQueued}

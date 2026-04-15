@@ -5,15 +5,18 @@ import type { ActivationLead } from '@/types/activation'
 
 interface Props {
   lead: ActivationLead
+  onViewThread: (id: string) => void
   onTakeOver: (id: string) => void
   onMarkBooked: (id: string) => void
   onMarkDead: (id: string) => void
 }
 
-export default function ActivationLeadCard({ lead, onTakeOver, onMarkBooked, onMarkDead }: Props) {
+export default function ActivationLeadCard({ lead, onViewThread, onTakeOver, onMarkBooked, onMarkDead }: Props) {
   const lastMessage = lead.messages
     ?.filter((m) => m.status !== 'cancelled')
     .sort((a, b) => (b.sentAt ?? '').localeCompare(a.sentAt ?? ''))[0]
+
+  const messageCount = (lead.messages ?? []).filter((m) => m.status !== 'cancelled').length
 
   const heatColors: Record<string, string> = {
     HOT: 'bg-red-100 text-red-700',
@@ -35,6 +38,32 @@ export default function ActivationLeadCard({ lead, onTakeOver, onMarkBooked, onM
       <div className="font-semibold text-sm text-gray-900">{lead.businessName}</div>
       <div className="text-xs text-gray-500 mt-0.5">{lead.phone} · {lead.location}</div>
 
+      {/* Social links */}
+      {(lead.facebookPageUrl || lead.instagramUrl) && (
+        <div className="flex gap-1.5 mt-1.5">
+          {lead.facebookPageUrl && (
+            <a
+              href={lead.facebookPageUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs bg-blue-50 text-blue-600 hover:bg-blue-100 px-2 py-0.5 rounded-full font-medium transition-colors"
+            >
+              Facebook
+            </a>
+          )}
+          {lead.instagramUrl && (
+            <a
+              href={lead.instagramUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs bg-pink-50 text-pink-600 hover:bg-pink-100 px-2 py-0.5 rounded-full font-medium transition-colors"
+            >
+              Instagram
+            </a>
+          )}
+        </div>
+      )}
+
       <div className="flex items-center justify-between mt-2">
         <span className={`text-xs font-bold px-2 py-0.5 rounded ${heatColors[lead.heatLevel]}`}>
           {lead.heatLevel} {lead.heatScore}
@@ -42,10 +71,29 @@ export default function ActivationLeadCard({ lead, onTakeOver, onMarkBooked, onM
         <span className="text-xs text-gray-400">{productName}</span>
       </div>
 
+      {/* Last message preview — click to view full thread */}
       {lastMessage && (
-        <div className="mt-2 bg-gray-50 rounded-lg p-2 text-xs text-gray-600 italic line-clamp-2">
-          &quot;{lastMessage.body.slice(0, 100)}{lastMessage.body.length > 100 ? '…' : ''}&quot;
-        </div>
+        <button
+          onClick={() => onViewThread(lead.id)}
+          className="mt-2 w-full text-left bg-gray-50 hover:bg-gray-100 rounded-lg p-2 transition-colors group"
+        >
+          <div className="text-xs text-gray-600 italic line-clamp-2">
+            &quot;{lastMessage.body.slice(0, 100)}{lastMessage.body.length > 100 ? '…' : ''}&quot;
+          </div>
+          <div className="text-xs text-green-600 group-hover:text-green-700 mt-1 font-medium">
+            View thread ({messageCount} message{messageCount !== 1 ? 's' : ''}) →
+          </div>
+        </button>
+      )}
+
+      {/* No messages yet — still allow viewing (empty state in modal) */}
+      {!lastMessage && (
+        <button
+          onClick={() => onViewThread(lead.id)}
+          className="mt-2 w-full text-left text-xs text-gray-400 hover:text-gray-600 transition-colors"
+        >
+          View thread →
+        </button>
       )}
 
       {lead.status === 'replied' && (

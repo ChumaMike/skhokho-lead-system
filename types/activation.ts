@@ -19,6 +19,8 @@ export interface ActivationLead {
   status: ActivationStatus
   hasWebsite: boolean
   googleMapsUrl: string | null
+  facebookPageUrl: string | null
+  instagramUrl: string | null
   createdAt: string
   activatedAt: string | null
   repliedAt: string | null
@@ -50,6 +52,8 @@ export interface ActivationLeadInput {
   sourceType: 'entered' | 'discovered'
   hasWebsite?: boolean
   googleMapsUrl?: string
+  facebookPageUrl?: string
+  instagramUrl?: string
 }
 
 // ── DB column shape (mirrors the Supabase schema) ───────────────────────────
@@ -68,6 +72,8 @@ interface ActivationLeadRow {
   status: string
   has_website: boolean
   google_maps_url: string | null
+  facebook_page_url: string | null
+  instagram_url: string | null
   created_at: string
   activated_at: string | null
   replied_at: string | null
@@ -110,6 +116,8 @@ export function toDbRow(lead: ActivationLeadInput & { status?: ActivationStatus 
     status: lead.status ?? 'queued',
     has_website: lead.hasWebsite ?? false,
     google_maps_url: lead.googleMapsUrl ?? null,
+    facebook_page_url: lead.facebookPageUrl ?? null,
+    instagram_url: lead.instagramUrl ?? null,
     created_at: new Date().toISOString(),
     activated_at: null,
     replied_at: null,
@@ -133,6 +141,8 @@ export function fromDbRow(row: Record<string, unknown>): ActivationLead {
     status: str(row.status, 'status') as ActivationStatus,
     hasWebsite: bool(row.has_website, 'has_website'),
     googleMapsUrl: nullable(str, row.google_maps_url, 'google_maps_url'),
+    facebookPageUrl: nullable(str, row.facebook_page_url, 'facebook_page_url'),
+    instagramUrl: nullable(str, row.instagram_url, 'instagram_url'),
     createdAt: str(row.created_at, 'created_at'),
     activatedAt: nullable(str, row.activated_at, 'activated_at'),
     repliedAt: nullable(str, row.replied_at, 'replied_at'),

@@ -154,6 +154,7 @@ export default function LeadDiscovery() {
             sourceType: 'discovered' as const,
             hasWebsite: lead.hasWebsite,
             googleMapsUrl: lead.googleMapsUrl,
+            facebookPageUrl: lead.facebookPageUrl || undefined,
           })),
         ),
       })
