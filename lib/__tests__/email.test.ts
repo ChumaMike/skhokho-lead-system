@@ -196,3 +196,81 @@ describe('buildEmailPrompt', () => {
     expect(p).toMatch(/200/)
   })
 })
+
+const mockAnthropicCreate = jest.fn()
+jest.mock('@anthropic-ai/sdk', () => ({
+  __esModule: true,
+  default: jest.fn().mockImplementation(() => ({
+    messages: { create: mockAnthropicCreate },
+  })),
+}))
+
+import { generateEmailMessages } from '../email'
+
+describe('generateEmailMessages output scrubbing', () => {
+  const lead: ActivationLeadInput = {
+    businessName: 'Test Co',
+    phone: '+27834567890',
+    sector: 'salon_hair',
+    recommendedProduct: 'pro_website_bookings',
+    heatScore: 7,
+    heatLevel: 'WARM',
+    location: 'CPT',
+    agentName: 'Chuma',
+    sourceType: 'entered',
+  }
+
+  function mockClaude(raw: string) {
+    mockAnthropicCreate.mockResolvedValueOnce({
+      content: [{ type: 'text', text: raw }],
+    })
+  }
+
+  it('strips em-dashes from subject and body', async () => {
+    mockClaude(JSON.stringify({
+      day1: { subject: 'Quick idea — for you', body: 'Hello — world' },
+      day4: { subject: 'sub', body: 'body' },
+      day7: { subject: 'sub', body: 'body' },
+    }))
+    const out = await generateEmailMessages(lead, 'pitch', 'why')
+    expect(out.day1.subject).not.toMatch(/—/)
+    expect(out.day1.body).not.toMatch(/—/)
+    expect(out.day1.subject).toContain('-')
+  })
+
+  it('strips sentence-initial "And"', async () => {
+    mockClaude(JSON.stringify({
+      day1: { subject: 'sub', body: 'And we should chat.\nAnd one more thing.' },
+      day4: { subject: 'sub', body: 'body' },
+      day7: { subject: 'sub', body: 'body' },
+    }))
+    const out = await generateEmailMessages(lead, 'pitch', 'why')
+    expect(out.day1.body).not.toMatch(/^And /)
+    expect(out.day1.body).not.toMatch(/\nAnd /)
+  })
+
+  it('strips emoji', async () => {
+    mockClaude(JSON.stringify({
+      day1: { subject: 'Quick idea ✨', body: 'Hello 🚀 world' },
+      day4: { subject: 'sub', body: 'body' },
+      day7: { subject: 'sub', body: 'body' },
+    }))
+    const out = await generateEmailMessages(lead, 'pitch', 'why')
+    expect(out.day1.subject).not.toMatch(/✨/)
+    expect(out.day1.body).not.toMatch(/🚀/)
+  })
+
+  it('throws with lead context when Claude returns non-JSON', async () => {
+    mockClaude('this is not json at all')
+    await expect(generateEmailMessages(lead, 'p', 'w')).rejects.toThrow(/Test Co/)
+  })
+
+  it('throws when a day is missing the body field', async () => {
+    mockClaude(JSON.stringify({
+      day1: { subject: 'only subject' },
+      day4: { subject: 'sub', body: 'body' },
+      day7: { subject: 'sub', body: 'body' },
+    }))
+    await expect(generateEmailMessages(lead, 'p', 'w')).rejects.toThrow(/day1/)
+  })
+})

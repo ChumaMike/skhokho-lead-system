@@ -162,6 +162,19 @@ function stripCodeFences(text: string): string {
   return text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/i, '').trim()
 }
 
+/**
+ * Strips common AI-generated tells from outreach copy: em/en dashes, sentence-initial "And ",
+ * and emoji blocks. Asking Claude to avoid these is unreliable; we enforce post-hoc.
+ */
+function scrubAiTells(s: string): string {
+  return s
+    .replace(/[—–]/g, '-')                                   // em/en dash → hyphen
+    .replace(/(^|\n)\s*And /g, '$1')                          // sentence-initial "And " (start-of-string OR after newline)
+    .replace(/[\u{1F300}-\u{1FAFF}]/gu, '')                  // emoji block (symbols & pictographs, supplemental, extended-A)
+    .replace(/[\u{2600}-\u{27BF}]/gu, '')                    // misc symbols & dingbats (covers ✓ ✨ ⭐ etc.)
+    .trim()
+}
+
 export interface EmailDay {
   subject: string
   body: string
@@ -181,14 +194,19 @@ export async function generateEmailMessages(
     messages: [{ role: 'user', content: buildEmailPrompt(lead, productPitch, whyItFits, supportingProducts) }],
   })
   const raw = response.content[0].type === 'text' ? response.content[0].text.trim() : '{}'
-  const parsed = JSON.parse(stripCodeFences(raw)) as Record<string, unknown>
+  let parsed: Record<string, unknown>
+  try {
+    parsed = JSON.parse(stripCodeFences(raw)) as Record<string, unknown>
+  } catch {
+    throw new Error(`generateEmailMessages: Claude returned non-JSON for ${lead.businessName}. Raw (truncated): ${raw.slice(0, 500)}`)
+  }
 
   function parseDay(key: string): EmailDay {
     const d = parsed[key] as { subject?: unknown; body?: unknown } | undefined
     if (!d || typeof d.subject !== 'string' || d.subject.trim() === '' || typeof d.body !== 'string' || d.body.trim() === '') {
       throw new Error(`generateEmailMessages: invalid '${key}' entry — expected {subject, body} non-empty strings. Got: ${JSON.stringify(d)}`)
     }
-    return { subject: d.subject.trim(), body: d.body.trim() }
+    return { subject: scrubAiTells(d.subject.trim()), body: scrubAiTells(d.body.trim()) }
   }
 
   return { day1: parseDay('day1'), day4: parseDay('day4'), day7: parseDay('day7') }
