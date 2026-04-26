@@ -35,16 +35,38 @@ export interface ScrapedContacts {
   source: 'website' | 'facebook' | null
 }
 
+const MAX_BYTES = 2_000_000  // 2 MB — enough for a homepage, prevents OOM
+
 async function fetchWithTimeout(url: string, timeoutMs = 5000): Promise<string | null> {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), timeoutMs)
   try {
     const res = await fetch(url, {
       signal: controller.signal,
-      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; SkhokhoLeadBot/1.0)' },
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; SkhokhoLeadBot/1.0; +https://skhokholabs.xyz/bot)' },
     })
     if (!res.ok) return null
-    return await res.text()
+
+    // Cheap pre-check via Content-Length
+    const declared = Number(res.headers.get('content-length') ?? 0)
+    if (declared && declared > MAX_BYTES) return null
+
+    // Stream and abort if oversize (covers chunked / no-content-length servers)
+    if (!res.body) return await res.text()
+    const reader = res.body.getReader()
+    const chunks: Uint8Array[] = []
+    let total = 0
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      total += value.length
+      if (total > MAX_BYTES) {
+        await reader.cancel()
+        return null
+      }
+      chunks.push(value)
+    }
+    return new TextDecoder('utf-8').decode(Buffer.concat(chunks.map(c => Buffer.from(c))))
   } catch {
     return null
   } finally {

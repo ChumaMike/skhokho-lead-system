@@ -1,4 +1,4 @@
-import { extractEmailFromHtml } from '../scrapeContacts'
+import { extractEmailFromHtml, scrapeContacts } from '../scrapeContacts'
 
 describe('extractEmailFromHtml', () => {
   it('extracts a personal-looking email', () => {
@@ -34,5 +34,43 @@ describe('extractEmailFromHtml', () => {
   it('strips emails inside <script> blocks', () => {
     const html = '<script>const x = "hidden@inside.com"</script><p>real@outside.com</p>'
     expect(extractEmailFromHtml(html)).toBe('real@outside.com')
+  })
+})
+
+describe('scrapeContacts response-size cap', () => {
+  const realFetch = global.fetch
+
+  afterEach(() => {
+    global.fetch = realFetch
+  })
+
+  it('returns null when Content-Length exceeds 2MB', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      headers: new Map([['content-length', '5000000']]) as unknown as Headers,
+      body: null,
+      text: async () => 'should not be called',
+    }) as unknown as typeof fetch
+    const result = await scrapeContacts('https://example.com', null)
+    expect(result.email).toBeNull()
+  })
+
+  it('aborts the stream when body exceeds 2MB', async () => {
+    const big = new Uint8Array(3_000_000)  // 3 MB single chunk
+    let cancelled = false
+    const reader = {
+      read: jest.fn()
+        .mockResolvedValueOnce({ done: false, value: big })
+        .mockResolvedValueOnce({ done: true, value: undefined }),
+      cancel: jest.fn(async () => { cancelled = true }),
+    }
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      headers: new Map(),
+      body: { getReader: () => reader },
+    }) as unknown as typeof fetch
+    const result = await scrapeContacts('https://example.com', null)
+    expect(result.email).toBeNull()
+    expect(cancelled).toBe(true)
   })
 })
