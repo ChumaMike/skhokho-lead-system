@@ -14,7 +14,7 @@ export default function DiscoverySearchForm({ onSearch, isLoading }: DiscoverySe
   const [sector, setSector] = useState<Sector>('spaza_food')
   const [location, setLocation] = useState('')
   const [radius, setRadius] = useState(5000)
-  const [maxResults, setMaxResults] = useState(20)
+  const [maxResults, setMaxResults] = useState(100)
   const [agentName, setAgentName] = useState('')
 
   useEffect(() => {
