@@ -3,12 +3,16 @@ import type { Sector, Product, HeatLevel } from './lead'
 export type ActivationStatus = 'queued' | 'sent' | 'replied' | 'booked' | 'dead'
 export type MessageDirection = 'outbound' | 'inbound'
 export type MessageStatus = 'scheduled' | 'sent' | 'delivered' | 'read' | 'failed' | 'cancelled'
+export type MessageChannel = 'whatsapp' | 'email'
+export type EmailStatus = 'valid' | 'bounced' | 'unsubscribed'
 
 export interface ActivationLead {
   id: string
   businessName: string
   ownerName: string | null
   phone: string
+  email: string | null
+  emailStatus: EmailStatus | null
   sector: Sector
   recommendedProduct: Product
   heatScore: number
@@ -32,18 +36,20 @@ export interface ActivationMessage {
   leadId: string
   direction: MessageDirection
   body: string
+  subject: string | null
   sequenceDay: number | null
   status: MessageStatus
-  channel: 'whatsapp'
+  channel: MessageChannel
   sentAt: string | null
   scheduledFor: string | null
-  metaMessageId: string | null
+  providerMessageId: string | null
 }
 
 export interface ActivationLeadInput {
   businessName: string
   ownerName?: string
   phone: string
+  email?: string
   sector: Sector
   recommendedProduct: Product
   heatScore: number
@@ -57,12 +63,12 @@ export interface ActivationLeadInput {
   instagramUrl?: string
 }
 
-// ── DB column shape (mirrors the Supabase schema) ───────────────────────────
-
 interface ActivationLeadRow {
   business_name: string
   owner_name: string | null
   phone: string
+  email: string | null
+  email_status: string | null
   sector: string
   recommended_product: string
   heat_score: number
@@ -79,8 +85,6 @@ interface ActivationLeadRow {
   activated_at: string | null
   replied_at: string | null
 }
-
-// ── Runtime type guard helpers ───────────────────────────────────────────────
 
 function str(v: unknown, field: string): string {
   if (typeof v !== 'string') throw new TypeError(`DB row: expected string for '${field}', got ${typeof v}`)
@@ -99,14 +103,13 @@ function nullable<T>(guard: (v: unknown, f: string) => T, v: unknown, field: str
   return guard(v, field)
 }
 
-// ── Row mappers ──────────────────────────────────────────────────────────────
-
-/** Maps camelCase ActivationLeadInput to snake_case DB row */
 export function toDbRow(lead: ActivationLeadInput & { status?: ActivationStatus }): ActivationLeadRow & { status: string } {
   return {
     business_name: lead.businessName,
     owner_name: lead.ownerName ?? null,
     phone: lead.phone,
+    email: lead.email?.toLowerCase() ?? null,
+    email_status: null,
     sector: lead.sector,
     recommended_product: lead.recommendedProduct,
     heat_score: lead.heatScore,
@@ -125,13 +128,14 @@ export function toDbRow(lead: ActivationLeadInput & { status?: ActivationStatus 
   }
 }
 
-/** Maps a raw Supabase DB row to a camelCase ActivationLead (without messages) */
 export function fromDbRow(row: Record<string, unknown>): ActivationLead {
   return {
     id: str(row.id, 'id'),
     businessName: str(row.business_name, 'business_name'),
     ownerName: nullable(str, row.owner_name, 'owner_name'),
     phone: str(row.phone, 'phone'),
+    email: nullable(str, row.email, 'email'),
+    emailStatus: nullable(str, row.email_status, 'email_status') as EmailStatus | null,
     sector: str(row.sector, 'sector') as Sector,
     recommendedProduct: str(row.recommended_product, 'recommended_product') as Product,
     heatScore: num(row.heat_score, 'heat_score'),
@@ -150,23 +154,22 @@ export function fromDbRow(row: Record<string, unknown>): ActivationLead {
   }
 }
 
-/** Maps a raw Supabase DB row to a camelCase ActivationMessage */
 export function msgFromDbRow(row: Record<string, unknown>): ActivationMessage {
   return {
     id: str(row.id, 'id'),
     leadId: str(row.lead_id, 'lead_id'),
     direction: str(row.direction, 'direction') as MessageDirection,
     body: str(row.body, 'body'),
+    subject: nullable(str, row.subject, 'subject'),
     sequenceDay: row.sequence_day === null || row.sequence_day === undefined ? null : num(row.sequence_day, 'sequence_day'),
     status: str(row.status, 'status') as MessageStatus,
-    channel: 'whatsapp',
+    channel: str(row.channel, 'channel') as MessageChannel,
     sentAt: nullable(str, row.sent_at, 'sent_at'),
     scheduledFor: nullable(str, row.scheduled_for, 'scheduled_for'),
-    metaMessageId: nullable(str, row.meta_message_id, 'meta_message_id'),
+    providerMessageId: nullable(str, row.provider_message_id, 'provider_message_id'),
   }
 }
 
-/** Assembles a lead row with its embedded messages (from Supabase nested select) */
 export function fromDbRowWithMessages(row: Record<string, unknown>): ActivationLead {
   const lead = fromDbRow(row)
   const messageRows = Array.isArray(row.activation_messages) ? row.activation_messages : []

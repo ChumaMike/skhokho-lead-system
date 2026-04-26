@@ -36,7 +36,7 @@ export async function POST(request: Request) {
       await (supabase as any)
         .from('activation_messages')
         .update({ status })
-        .eq('meta_message_id', wamid)
+        .eq('provider_message_id', wamid)
     }
     return NextResponse.json({ received: true })
   }
@@ -143,7 +143,7 @@ export async function POST(request: Request) {
         channel: 'whatsapp',
         sent_at: new Date().toISOString(),
         scheduled_for: null,
-        meta_message_id: replyWamid,
+        provider_message_id: replyWamid,
       })
 
       if (lead.status === 'sent') {

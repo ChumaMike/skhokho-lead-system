@@ -93,7 +93,7 @@ export async function POST(request: Request) {
           channel: 'whatsapp',
           sent_at: now.toISOString(),
           scheduled_for: null,
-          meta_message_id: wamid,
+          provider_message_id: wamid,
         },
         {
           lead_id: activationLead.id,
