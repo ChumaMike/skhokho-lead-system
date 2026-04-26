@@ -92,8 +92,9 @@ export async function POST(request: Request) {
         .update({ status: 'sent', activated_at: new Date().toISOString() })
         .eq('id', activationLead.id)
 
-      // WhatsApp rows: Day 1 sent, Day 4 + 7 scheduled
-      const rows: Record<string, unknown>[] = [
+      // Persist WhatsApp rows immediately so a downstream email failure cannot leave the WA send
+      // without a DB record (which would cause double-sends on retry).
+      const waRows: Record<string, unknown>[] = [
         {
           lead_id: activationLead.id,
           direction: 'outbound',
@@ -129,55 +130,60 @@ export async function POST(request: Request) {
           scheduled_for: day7Date.toISOString(),
         },
       ]
+      await sb.from('activation_messages').insert(waRows)
 
-      if (emailMessages) {
-        // Email Day 1 also sent immediately for symmetry with WhatsApp
-        const emailDay1Id = await sendEmail({
-          to: lead.email!.trim(),
-          subject: emailMessages.day1.subject,
-          body: emailMessages.day1.body,
-          leadId: activationLead.id as string,
-          businessName: lead.businessName,
-        })
-        rows.push(
-          {
-            lead_id: activationLead.id,
-            direction: 'outbound',
-            body: emailMessages.day1.body,
+      if (emailMessages && lead.email) {
+        try {
+          const trimmedEmail = lead.email.trim()
+          const emailDay1Id = await sendEmail({
+            to: trimmedEmail,
             subject: emailMessages.day1.subject,
-            sequence_day: 1,
-            status: 'sent',
-            channel: 'email',
-            sent_at: now.toISOString(),
-            scheduled_for: null,
-            provider_message_id: emailDay1Id,
-          },
-          {
-            lead_id: activationLead.id,
-            direction: 'outbound',
-            body: emailMessages.day4.body,
-            subject: emailMessages.day4.subject,
-            sequence_day: 4,
-            status: 'scheduled',
-            channel: 'email',
-            sent_at: null,
-            scheduled_for: day4Date.toISOString(),
-          },
-          {
-            lead_id: activationLead.id,
-            direction: 'outbound',
-            body: emailMessages.day7.body,
-            subject: emailMessages.day7.subject,
-            sequence_day: 7,
-            status: 'scheduled',
-            channel: 'email',
-            sent_at: null,
-            scheduled_for: day7Date.toISOString(),
-          },
-        )
+            body: emailMessages.day1.body,
+            leadId: activationLead.id as string,
+            businessName: lead.businessName,
+          })
+          const emailRows: Record<string, unknown>[] = [
+            {
+              lead_id: activationLead.id,
+              direction: 'outbound',
+              body: emailMessages.day1.body,
+              subject: emailMessages.day1.subject,
+              sequence_day: 1,
+              status: 'sent',
+              channel: 'email',
+              sent_at: new Date().toISOString(),
+              scheduled_for: null,
+              provider_message_id: emailDay1Id,
+            },
+            {
+              lead_id: activationLead.id,
+              direction: 'outbound',
+              body: emailMessages.day4.body,
+              subject: emailMessages.day4.subject,
+              sequence_day: 4,
+              status: 'scheduled',
+              channel: 'email',
+              sent_at: null,
+              scheduled_for: day4Date.toISOString(),
+            },
+            {
+              lead_id: activationLead.id,
+              direction: 'outbound',
+              body: emailMessages.day7.body,
+              subject: emailMessages.day7.subject,
+              sequence_day: 7,
+              status: 'scheduled',
+              channel: 'email',
+              sent_at: null,
+              scheduled_for: day7Date.toISOString(),
+            },
+          ]
+          await sb.from('activation_messages').insert(emailRows)
+        } catch (emailErr) {
+          // WhatsApp side already persisted; log and continue. Lead is still considered activated.
+          console.error('Email channel failed for lead (WhatsApp persisted):', lead.businessName, emailErr)
+        }
       }
-
-      await sb.from('activation_messages').insert(rows)
 
       activated++
     } catch (err) {
