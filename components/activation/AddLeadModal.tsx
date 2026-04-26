@@ -21,6 +21,7 @@ export default function AddLeadModal({ onClose, onAdded }: Props) {
   const [hasWebsite, setHasWebsite] = useState(false)
   const [facebookPageUrl, setFacebookPageUrl] = useState('')
   const [instagramUrl, setInstagramUrl] = useState('')
+  const [email, setEmail] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
@@ -65,6 +66,7 @@ export default function AddLeadModal({ onClose, onAdded }: Props) {
           businessName: businessName.trim(),
           ownerName: ownerName.trim() || undefined,
           phone: phone.trim(),
+          email: email.trim() || undefined,
           sector,
           recommendedProduct,
           heatScore,
@@ -148,6 +150,18 @@ export default function AddLeadModal({ onClose, onAdded }: Props) {
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="083 456 7890"
                 required
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+              />
+            </div>
+            <div className="col-span-2">
+              <label className="block text-xs font-medium text-gray-700 mb-1">
+                Email <span className="font-normal text-gray-400">(optional — enables email outreach)</span>
+              </label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="owner@business.co.za"
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
               />
             </div>
