@@ -31,11 +31,25 @@ describe('appendComplianceFooter', () => {
     const out = appendComplianceFooter('Hello', 'lead-123', 'Acme')
     expect(out).toMatch(/https:\/\/skhokholabs\.xyz\/unsubscribe\?lead=lead-123&t=[A-Za-z0-9_-]+/)
   })
+
+  it('throws when EMAIL_PHYSICAL_ADDRESS is unset', () => {
+    const saved = process.env.EMAIL_PHYSICAL_ADDRESS
+    delete process.env.EMAIL_PHYSICAL_ADDRESS
+    try {
+      expect(() => appendComplianceFooter('Hello', 'lead-1', 'Acme')).toThrow(/EMAIL_PHYSICAL_ADDRESS/)
+    } finally {
+      process.env.EMAIL_PHYSICAL_ADDRESS = saved
+    }
+  })
 })
 
 describe('unsubscribe token', () => {
+  const origSecret = process.env.UNSUBSCRIBE_HMAC_SECRET
   beforeAll(() => {
     process.env.UNSUBSCRIBE_HMAC_SECRET = 'test-secret-do-not-use-in-prod'
+  })
+  afterAll(() => {
+    process.env.UNSUBSCRIBE_HMAC_SECRET = origSecret
   })
 
   it('round-trips a valid token', () => {

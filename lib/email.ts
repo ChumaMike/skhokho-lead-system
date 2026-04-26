@@ -6,6 +6,12 @@ function getSecret(): string {
   return s
 }
 
+function getAddress(): string {
+  const a = process.env.EMAIL_PHYSICAL_ADDRESS
+  if (!a) throw new Error('EMAIL_PHYSICAL_ADDRESS is not set (POPIA s.69 requires a physical address in every outbound email)')
+  return a
+}
+
 /**
  * HMAC-SHA256 over the leadId, base64url-encoded.
  * Use with verifyUnsubscribeToken to validate inbound unsubscribe links.
@@ -32,7 +38,7 @@ export function verifyUnsubscribeToken(leadId: string, token: string): boolean {
  * Includes sender identification, physical address, and a signed unsubscribe link.
  */
 export function appendComplianceFooter(body: string, leadId: string, businessName: string): string {
-  const address = process.env.EMAIL_PHYSICAL_ADDRESS ?? ''
+  const address = getAddress()
   const token = signUnsubscribeToken(leadId)
   const unsubUrl = `https://skhokholabs.xyz/unsubscribe?lead=${encodeURIComponent(leadId)}&t=${token}`
   return `${body}
