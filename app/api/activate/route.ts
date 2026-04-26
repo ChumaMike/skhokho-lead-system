@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getSupabase } from '@/lib/supabase'
 import { normalizePhone, generateMessages, sendWhatsApp } from '@/lib/activation'
+import { generateEmailMessages, sendEmail } from '@/lib/email'
 import { isSAMobile } from '@/lib/placesApi'
 import { getAllProductsWithOffer, getSupportingProducts } from '@/lib/productMatch'
 import { toDbRow } from '@/types/activation'
@@ -33,7 +34,6 @@ export async function POST(request: Request) {
         continue
       }
 
-      // Build a minimal DiscoveredLead shape for getAllProductsWithOffer
       const pseudoLead: DiscoveredLead = {
         placeId: '',
         businessName: lead.businessName,
@@ -57,9 +57,17 @@ export async function POST(request: Request) {
       const offer = products.find((p) => p.product === lead.recommendedProduct)
       const pitch = offer?.pitch ?? ''
       const whyItFits = offer?.whyItFits ?? ''
-
       const supportingProducts = getSupportingProducts(lead.sector, lead.recommendedProduct)
-      const messages = await generateMessages({ ...lead, phone }, pitch, whyItFits, supportingProducts)
+
+      // Generate WhatsApp + (optionally) email IN PARALLEL.
+      // If email is present and email gen fails, the whole activation fails — atomic.
+      const hasEmail = typeof lead.email === 'string' && lead.email.trim() !== ''
+      const [waMessages, emailMessages] = await Promise.all([
+        generateMessages({ ...lead, phone }, pitch, whyItFits, supportingProducts),
+        hasEmail
+          ? generateEmailMessages({ ...lead, phone }, pitch, whyItFits, supportingProducts)
+          : Promise.resolve(null),
+      ])
 
       const now = new Date()
       const day4Date = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000)
@@ -76,18 +84,21 @@ export async function POST(request: Request) {
 
       if (leadError) throw leadError
 
-      const wamid = await sendWhatsApp(phone, messages.day1)
+      // Send Day 1 WhatsApp immediately (existing behaviour)
+      const wamid = await sendWhatsApp(phone, waMessages.day1)
 
       await sb
         .from('activation_leads')
         .update({ status: 'sent', activated_at: new Date().toISOString() })
         .eq('id', activationLead.id)
 
-      await sb.from('activation_messages').insert([
+      // WhatsApp rows: Day 1 sent, Day 4 + 7 scheduled
+      const rows: Record<string, unknown>[] = [
         {
           lead_id: activationLead.id,
           direction: 'outbound',
-          body: messages.day1,
+          body: waMessages.day1,
+          subject: null,
           sequence_day: 1,
           status: 'sent',
           channel: 'whatsapp',
@@ -98,7 +109,8 @@ export async function POST(request: Request) {
         {
           lead_id: activationLead.id,
           direction: 'outbound',
-          body: messages.day4,
+          body: waMessages.day4,
+          subject: null,
           sequence_day: 4,
           status: 'scheduled',
           channel: 'whatsapp',
@@ -108,14 +120,64 @@ export async function POST(request: Request) {
         {
           lead_id: activationLead.id,
           direction: 'outbound',
-          body: messages.day7,
+          body: waMessages.day7,
+          subject: null,
           sequence_day: 7,
           status: 'scheduled',
           channel: 'whatsapp',
           sent_at: null,
           scheduled_for: day7Date.toISOString(),
         },
-      ])
+      ]
+
+      if (emailMessages) {
+        // Email Day 1 also sent immediately for symmetry with WhatsApp
+        const emailDay1Id = await sendEmail({
+          to: lead.email!.trim(),
+          subject: emailMessages.day1.subject,
+          body: emailMessages.day1.body,
+          leadId: activationLead.id as string,
+          businessName: lead.businessName,
+        })
+        rows.push(
+          {
+            lead_id: activationLead.id,
+            direction: 'outbound',
+            body: emailMessages.day1.body,
+            subject: emailMessages.day1.subject,
+            sequence_day: 1,
+            status: 'sent',
+            channel: 'email',
+            sent_at: now.toISOString(),
+            scheduled_for: null,
+            provider_message_id: emailDay1Id,
+          },
+          {
+            lead_id: activationLead.id,
+            direction: 'outbound',
+            body: emailMessages.day4.body,
+            subject: emailMessages.day4.subject,
+            sequence_day: 4,
+            status: 'scheduled',
+            channel: 'email',
+            sent_at: null,
+            scheduled_for: day4Date.toISOString(),
+          },
+          {
+            lead_id: activationLead.id,
+            direction: 'outbound',
+            body: emailMessages.day7.body,
+            subject: emailMessages.day7.subject,
+            sequence_day: 7,
+            status: 'scheduled',
+            channel: 'email',
+            sent_at: null,
+            scheduled_for: day7Date.toISOString(),
+          },
+        )
+      }
+
+      await sb.from('activation_messages').insert(rows)
 
       activated++
     } catch (err) {
