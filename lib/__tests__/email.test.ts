@@ -152,3 +152,47 @@ describe('sendEmail', () => {
     expect(arg.headers['List-Unsubscribe']).not.toContain('Chuma Meyiswa')
   })
 })
+
+import { buildEmailPrompt } from '../email'
+import type { ActivationLeadInput } from '@/types/activation'
+
+describe('buildEmailPrompt', () => {
+  const lead: ActivationLeadInput = {
+    businessName: "Mama T's Salon",
+    ownerName: 'Mama T',
+    phone: '+27834567890',
+    email: 'mamat@example.com',
+    sector: 'salon_hair',
+    recommendedProduct: 'pro_website_bookings',
+    heatScore: 9,
+    heatLevel: 'HOT',
+    location: 'Soweto',
+    agentName: 'Thabo',
+    sourceType: 'discovered',
+    hasWebsite: false,
+  }
+
+  it('includes business name', () => {
+    const p = buildEmailPrompt(lead, 'Take bookings online', 'Relies on appointments', ['ai_receptionist', 'content_dashboard'])
+    expect(p).toContain("Mama T's Salon")
+  })
+
+  it('includes agent name', () => {
+    const p = buildEmailPrompt(lead, 'Take bookings online', 'Relies on appointments', ['ai_receptionist', 'content_dashboard'])
+    expect(p).toContain('Thabo')
+  })
+
+  it('asks for both subject and body for each day', () => {
+    const p = buildEmailPrompt(lead, 'Pitch', 'Why', ['ai_receptionist', 'content_dashboard'])
+    expect(p).toContain('day1')
+    expect(p).toContain('day4')
+    expect(p).toContain('day7')
+    expect(p).toContain('subject')
+    expect(p).toContain('body')
+  })
+
+  it('instructs email-native length (200-400 words), not WhatsApp-short', () => {
+    const p = buildEmailPrompt(lead, 'Pitch', 'Why', ['ai_receptionist', 'content_dashboard'])
+    expect(p).toMatch(/200/)
+  })
+})
