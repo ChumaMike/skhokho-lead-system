@@ -202,6 +202,12 @@ export default function ConversationModal({ lead, onClose }: Props) {
                       : 'bg-white text-gray-900'
                   }`}
                 >
+                  {/* Email subject (only for email channel) */}
+                  {msg.channel === 'email' && msg.subject && (
+                    <div className="text-xs font-semibold text-gray-700 mb-1 pb-1 border-b border-gray-200/70">
+                      {msg.subject}
+                    </div>
+                  )}
                   {/* Full message text */}
                   <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.body}</p>
 
