@@ -1,5 +1,12 @@
+import 'server-only'
 import { createHmac, timingSafeEqual } from 'node:crypto'
 import { Resend } from 'resend'
+
+/** Extracts the bare email address from a "Display Name <addr@example>" form. Returns input unchanged if no angle brackets. */
+function bareAddress(addr: string): string {
+  const m = addr.match(/<([^>]+)>/)
+  return m ? m[1] : addr
+}
 
 function getSecret(): string {
   const s = process.env.UNSUBSCRIBE_HMAC_SECRET
@@ -86,7 +93,7 @@ export async function sendEmail(params: SendEmailParams): Promise<string> {
     subject: params.subject,
     text,
     headers: {
-      'List-Unsubscribe': `<${unsubUrl}>, <mailto:${replyTo}?subject=unsubscribe>`,
+      'List-Unsubscribe': `<${unsubUrl}>, <mailto:${bareAddress(replyTo)}?subject=unsubscribe>`,
       'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
     },
   })

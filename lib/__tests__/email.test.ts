@@ -1,3 +1,6 @@
+// Stub the server-only marker so jest (node env) can import lib/email.ts.
+jest.mock('server-only', () => ({}))
+
 import { appendComplianceFooter, signUnsubscribeToken, verifyUnsubscribeToken } from '../email'
 
 describe('appendComplianceFooter', () => {
@@ -138,5 +141,14 @@ describe('sendEmail', () => {
     await expect(
       sendEmail({ to: 'bad', subject: 's', body: 'b', leadId: 'l', businessName: 'B' })
     ).rejects.toThrow(/invalid recipient/)
+  })
+
+  it('strips display name from EMAIL_REPLY_TO when building mailto', async () => {
+    process.env.EMAIL_REPLY_TO = 'Chuma Meyiswa <chuma@skhokholabs.xyz>'
+    mockSend.mockResolvedValueOnce({ data: { id: 'x' }, error: null })
+    await sendEmail({ to: 'owner@example.com', subject: 's', body: 'b', leadId: 'l', businessName: 'B' })
+    const arg = mockSend.mock.calls[0][0]
+    expect(arg.headers['List-Unsubscribe']).toContain('mailto:chuma@skhokholabs.xyz?subject=unsubscribe')
+    expect(arg.headers['List-Unsubscribe']).not.toContain('Chuma Meyiswa')
   })
 })
