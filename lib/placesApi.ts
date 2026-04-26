@@ -179,6 +179,7 @@ export async function searchPlaces(
       placeId: place.id ?? '',
       businessName: place.displayName?.text ?? '',
       phone,
+      email: null,
       address: place.formattedAddress ?? '',
       location: params.location,
       sector: params.sector,

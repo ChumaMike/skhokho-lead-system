@@ -4,6 +4,7 @@ export interface DiscoveredLead {
   placeId: string
   businessName: string
   phone: string             // empty string if not available
+  email: string | null      // null if not scraped or not found
   address: string
   location: string          // user-supplied search location
   sector: Sector

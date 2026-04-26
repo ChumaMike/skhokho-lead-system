@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import type { DiscoverySearchParams } from '@/types/discovery'
 import { searchPlaces } from '@/lib/placesApi'
+import { scrapeContacts } from '@/lib/scrapeContacts'
 import { getSectorSearchQuery } from '@/lib/sectorToPlaceType'
 
 export async function POST(request: NextRequest) {
@@ -48,12 +49,22 @@ export async function POST(request: NextRequest) {
   // 4. Call Places API
   try {
     const leads = await searchPlaces(params)
+
+    // Best-effort email enrichment in parallel — failures are silent
+    const enriched = await Promise.all(
+      leads.map(async (lead) => {
+        if (!lead.websiteUrl && !lead.facebookPageUrl) return lead
+        const { email } = await scrapeContacts(lead.websiteUrl || null, lead.facebookPageUrl || null)
+        return { ...lead, email }
+      }),
+    )
+
     const searchQuery = `${getSectorSearchQuery(params.sector)} in ${params.location}`
 
     return NextResponse.json({
-      leads,
+      leads: enriched,
       searchQuery,
-      totalFound: leads.length,
+      totalFound: enriched.length,
       searchedAt: new Date().toISOString(),
     })
   } catch (error) {

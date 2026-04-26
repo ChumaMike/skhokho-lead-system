@@ -115,6 +115,14 @@ export default function DiscoveredLeadCard({ lead, selected, onToggle }: Discove
                 FB
               </a>
             )}
+            {lead.email && (
+              <span
+                className="text-xs px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 font-bold"
+                title={lead.email}
+              >
+                &#9993; Email
+              </span>
+            )}
             {!lead.isWhatsAppCapable && !lead.facebookPageUrl && lead.phone && (
               <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 font-medium">
                 Landline

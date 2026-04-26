@@ -38,6 +38,7 @@ export async function POST(request: Request) {
         placeId: '',
         businessName: lead.businessName,
         phone,
+        email: null,
         address: lead.location,
         location: lead.location,
         sector: lead.sector,
